@@ -1,0 +1,38 @@
+[project]
+name = "app"
+version = "0.0.0"
+license = "Apache-2.0"
+description = ""
+authors = [
+    { name = "CU Devs Collective", email = "team@centraluniversity.dev" },
+]
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.141,<1",
+    "httpx2>=2.12,<3",
+    "loguru>=0.7,<1",
+    "maxapi==1.2.2",
+    "psycopg[binary]>=3.3,<4",
+    "pydantic>=2.13,<3",
+    "pydantic-settings>=2.15,<3",
+    "sqlalchemy[asyncio]>=2.0,<3",
+    "uvicorn[standard]>=0.52,<1",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit==4.6.2",
+    "pyright==1.1.411",
+    "pyyaml==6.0.3",
+    "pytest==9.1.1",
+    "pytest-cov==7.1.0",
+    "ruff==0.16.4",
+]
+
+[project.scripts]
+api = "app.api:main"
+bot = "app.bot:main"
+
+[build-system]
+requires = ["uv_build>=0.12.14,<0.13.0"]
+build-backend = "uv_build"
