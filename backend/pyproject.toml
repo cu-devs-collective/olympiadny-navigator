@@ -21,6 +21,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "openapi-spec-validator==0.9.0",
     "pre-commit==4.6.2",
     "pyright==1.1.411",
     "pyyaml==6.0.3",
@@ -30,9 +31,40 @@ dev = [
 ]
 
 [project.scripts]
-api = "app.api:main"
-bot = "app.bot:main"
+api = "app.api.__main__:main"
+bot = "app.bot.__main__:main"
 
 [build-system]
 requires = ["uv_build>=0.12.14,<0.13.0"]
 build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+addopts = ["--strict-config", "--strict-markers"]
+testpaths = ["tests"]
+
+[tool.pyright]
+include = ["src", "tests", "tools"]
+pythonVersion = "3.13"
+typeCheckingMode = "standard"
+
+[tool.coverage.run]
+branch = true
+source = ["app"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "E",   # style errors
+    "F",   # invalid or unused Python constructs
+    "I",   # import ordering
+    "UP",  # modernization for supported Python versions
+    "B",   # likely bugs
+    "SIM", # unnecessary complexity
+    "RUF", # Ruff-specific correctness rules
+]
+
+[tool.ruff.lint.isort]
+lines-after-imports = 2
