@@ -19,6 +19,8 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-dev --no-install-project
 
 COPY src ./src
+COPY alembic.ini ./
+COPY migrations ./migrations
 
 RUN uv sync --locked --no-dev --no-editable
 
@@ -35,6 +37,8 @@ RUN addgroup -S app \
 WORKDIR /opt/app
 
 COPY --from=builder --chown=app:app /opt/app/.venv ./.venv
+COPY --from=builder --chown=app:app /opt/app/alembic.ini ./alembic.ini
+COPY --from=builder --chown=app:app /opt/app/migrations ./migrations
 
 USER app
 
