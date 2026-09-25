@@ -1,0 +1,79 @@
+x-app: &app
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+  environment: &app-environment
+    APP_DEBUG: ${APP_DEBUG:-true}
+    APP_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-postgres}
+    APP_LOGGING_FORMAT: ${APP_LOGGING_FORMAT:-text}
+    APP_LOGGING_LEVEL: ${APP_LOGGING_LEVEL:-DEBUG}
+    APP_LOGGING_SQL_LEVEL: ${APP_LOGGING_SQL_LEVEL:-WARNING}
+    PYTHONPATH: /opt/app/src
+  volumes:
+    - ./src:/opt/app/src:ro
+    - ./migrations:/opt/app/migrations:ro
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  migrate:
+    <<: *app
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *app
+    restart: unless-stopped
+    command: ["api"]
+    environment:
+      <<: *app-environment
+      APP_SERVER_RELOAD: "true"
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import urllib.request;
+          urllib.request.urlopen("http://localhost:8000/api/v1/healthz/ready", timeout=2)
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  bot:
+    <<: *app
+    command: ["bot"]
+    profiles: ["bot"]
+    environment:
+      <<: *app-environment
+      APP_BOT_TOKEN: ${APP_BOT_TOKEN:?APP_BOT_TOKEN is required}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  postgres-data:
