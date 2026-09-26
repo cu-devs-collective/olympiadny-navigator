@@ -67,9 +67,9 @@ services:
   bot:
     <<: *app
     command: ["bot"]
-    profiles: ["bot"]
     environment:
       <<: *app-environment
+      APP_BOT_MODE: long_polling
       APP_BOT_TOKEN: ${APP_BOT_TOKEN:?APP_BOT_TOKEN is required}
     depends_on:
       migrate:
