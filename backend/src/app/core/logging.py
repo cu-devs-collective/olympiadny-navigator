@@ -4,7 +4,7 @@ import sys
 
 import loguru
 
-from app.core.config import LoggingSettings
+from app.core.config import LogFormat, LoggingSettings
 
 
 class InterceptHandler(logging.Handler):
@@ -31,7 +31,7 @@ def configure_logging(settings: LoggingSettings) -> None:
     loguru.logger.add(
         sys.stderr,
         level=settings.level,
-        serialize=settings.format == "json",
+        serialize=settings.format is LogFormat.JSON,
         backtrace=False,
         diagnose=False,
         enqueue=True,
