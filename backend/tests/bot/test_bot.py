@@ -6,10 +6,28 @@ from unittest import mock
 import pytest
 from maxapi.enums import UpdateType
 
+from app.bot import __main__ as bot_main
 from app.bot.dispatcher import create_dispatcher
 from app.bot.handlers.repeater import repeat_message
 from app.bot.runner import configure_webhook, run_bot, run_long_polling, run_webhook
 from app.core.config import BotSettings, Settings
+
+
+def test_main_logs_unhandled_exception_and_returns_failure() -> None:
+    error = RuntimeError("startup failed")
+
+    with (
+        mock.patch.object(bot_main, "get_settings", return_value=Settings()),
+        mock.patch.object(bot_main, "configure_logging"),
+        mock.patch.object(bot_main, "shutdown_logging") as shutdown_logging,
+        mock.patch.object(bot_main, "run_bot", mock.AsyncMock(side_effect=error)),
+        mock.patch.object(bot_main.loguru.logger, "exception") as log_exception,
+    ):
+        exit_code = bot_main.main()
+
+    assert exit_code == 1
+    log_exception.assert_called_once_with("MAX bot terminated unexpectedly")
+    shutdown_logging.assert_called_once_with()
 
 
 def test_dispatcher_builds_fresh_feature_router_tree() -> None:
