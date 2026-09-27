@@ -9,6 +9,7 @@ import loguru
 from app.api.errors import install_error_handlers
 from app.api.router import api_router
 from app.core.config import Settings, get_settings
+from app.core.logging import configure_logging, shutdown_logging
 from app.core.middleware import RequestLoggingMiddleware
 from app.db.connector import Database
 
@@ -33,10 +34,12 @@ async def lifespan(app: fastapi.FastAPI) -> collections.abc.AsyncGenerator[None]
         if database is not None:
             await database.close()
         loguru.logger.info("API service stopped")
+        shutdown_logging()
 
 
 def create_app(settings: Settings | None = None) -> fastapi.FastAPI:
     settings = settings or get_settings()
+    configure_logging(settings.logging)
 
     app = fastapi.FastAPI(  # TODO: update application data.
         title="Example API",

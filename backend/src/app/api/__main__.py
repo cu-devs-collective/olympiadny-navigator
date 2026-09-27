@@ -1,12 +1,14 @@
+import loguru
 import uvicorn
 
 from app.core.config import get_settings
 from app.core.logging import configure_logging, shutdown_logging
 
 
-def main() -> None:
+def main() -> int:
     settings = get_settings()
     configure_logging(settings.logging)
+
     try:
         uvicorn.run(
             "app.api.app:create_app",
@@ -17,9 +19,16 @@ def main() -> None:
             log_config=None,
             access_log=False,
         )
+    except KeyboardInterrupt:
+        return 0
+    except Exception:
+        loguru.logger.exception("API terminated unexpectedly")
+        return 1
     finally:
         shutdown_logging()
 
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
