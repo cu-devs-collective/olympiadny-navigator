@@ -12,9 +12,15 @@ class Database:
             sqlalchemy.ext.asyncio.create_async_engine(
                 settings.url,
                 pool_pre_ping=True,
-                pool_size=settings.pool_size,
-                max_overflow=settings.max_overflow,
-                pool_timeout=settings.pool_timeout_seconds,
+                **(
+                    {}
+                    if settings.url.startswith("sqlite")
+                    else {
+                        "pool_size": settings.pool_size,
+                        "max_overflow": settings.max_overflow,
+                        "pool_timeout": settings.pool_timeout_seconds,
+                    }
+                ),
             )
         )
         self.session_factory = sqlalchemy.ext.asyncio.async_sessionmaker(

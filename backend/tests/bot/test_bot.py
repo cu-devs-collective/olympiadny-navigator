@@ -34,14 +34,10 @@ def test_dispatcher_builds_fresh_feature_router_tree() -> None:
     first_dispatcher = create_dispatcher()
     second_dispatcher = create_dispatcher()
 
-    handlers_router = first_dispatcher.routers[0]
-    repeater_router = handlers_router.routers[0]
-
-    assert handlers_router.router_id == "handlers"
-    assert repeater_router.router_id == "repeater"
-    assert len(repeater_router.event_handlers) == 1
+    router = first_dispatcher.routers[0]
+    assert router.router_id == "olympiad_route"
+    assert len(router.event_handlers) == 3
     assert first_dispatcher.routers[0] is not second_dispatcher.routers[0]
-    assert first_dispatcher.routers[0].routers[0] is not second_dispatcher.routers[0].routers[0]
 
 
 def test_repeat_message_copies_text_and_attachments() -> None:
@@ -94,7 +90,11 @@ def test_configure_webhook_refreshes_existing_subscription() -> None:
     bot.unsubscribe_webhook.assert_awaited_once_with("https://example.com/webhook")
     bot.subscribe_webhook.assert_awaited_once_with(
         url="https://example.com/webhook",
-        update_types=[UpdateType.MESSAGE_CREATED],
+        update_types=[
+            UpdateType.MESSAGE_CREATED,
+            UpdateType.BOT_STARTED,
+            UpdateType.MESSAGE_CALLBACK,
+        ],
         secret="secret-value",
     )
 
@@ -109,7 +109,7 @@ def test_long_polling_transport_starts_and_stops_dispatcher() -> None:
     asyncio.run(run_long_polling(bot, dispatcher))
 
     bot.delete_webhook.assert_awaited_once_with()
-    dispatcher.start_polling.assert_awaited_once_with(bot, skip_updates=True)
+    dispatcher.start_polling.assert_awaited_once_with(bot, skip_updates=False)
     dispatcher.stop_polling.assert_awaited_once_with()
 
 

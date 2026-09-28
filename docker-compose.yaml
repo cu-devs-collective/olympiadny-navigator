@@ -1,9 +1,71 @@
+x-app: &app
+  build:
+    context: ./backend
+    dockerfile: docker/Dockerfile
+  environment: &environment
+    APP_DATABASE_URL: postgresql+psycopg://route:${POSTGRES_PASSWORD:-route_local}@postgres:5432/route
+    APP_DEMO_ENABLED: ${APP_DEMO_ENABLED:-true}
+    APP_BOT_TOKEN: ${APP_BOT_TOKEN:-}
+    APP_BOT_USERNAME: ${APP_BOT_USERNAME:-}
+    APP_LOGGING_LEVEL: ${APP_LOGGING_LEVEL:-INFO}
+    APP_LOGGING_FORMAT: ${APP_LOGGING_FORMAT:-json}
 
 services:
-  api: {}
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: route
+      POSTGRES_DB: route
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-route_local}
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U route -d route"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
 
-  frontend: {}
+  migrate:
+    <<: *app
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
 
-  bot: {}
+  api:
+    <<: *app
+    command: ["api"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/healthz/ready', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
 
-  postgres: {}
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/docker/Dockerfile
+      target: runtime
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  bot:
+    <<: *app
+    profiles: [max]
+    command: ["bot"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  postgres-data:

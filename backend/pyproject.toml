@@ -8,6 +8,7 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
+    "aiosqlite>=0.21,<1",
     "alembic>=1.19,<2",
     "fastapi>=0.141,<1",
     "httpx2>=2.12,<3",
@@ -44,6 +45,8 @@ addopts = ["--strict-config", "--strict-markers"]
 testpaths = ["tests"]
 
 [tool.pyright]
+venvPath = "."
+venv = ".venv"
 include = ["src", "tests", "tools", "migrations"]
 pythonVersion = "3.13"
 typeCheckingMode = "standard"
@@ -57,6 +60,8 @@ line-length = 100
 target-version = "py313"
 
 [tool.ruff.lint]
+# Product copy is written in Russian.
+allowed-confusables = ["А", "В", "Е", "К", "М", "Н", "О", "Р", "С", "Т", "Х", "а", "е", "о", "р", "с", "у", "х"]
 select = [
     "E",   # style errors
     "F",   # invalid or unused Python constructs

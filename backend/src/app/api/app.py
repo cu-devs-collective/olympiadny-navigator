@@ -14,7 +14,7 @@ from app.core.middleware import RequestLoggingMiddleware
 from app.db.connector import Database
 
 
-OPENAPI_VERSION = "3.0.4"
+OPENAPI_VERSION = "3.1.0"
 API_ROOT_PATH = "/api"
 
 
@@ -41,8 +41,8 @@ def create_app(settings: Settings | None = None) -> fastapi.FastAPI:
     settings = settings or get_settings()
     configure_logging(settings.logging)
 
-    app = fastapi.FastAPI(  # TODO: update application data.
-        title="Example API",
+    app = fastapi.FastAPI(
+        title="Олимпиадный маршрут",
         version="0.1.0",
         root_path=API_ROOT_PATH,
         servers=[{"url": API_ROOT_PATH}],

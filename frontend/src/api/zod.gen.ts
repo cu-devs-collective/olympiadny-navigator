@@ -3,6 +3,14 @@
 import * as z from 'zod';
 
 /**
+ * DemoEvent
+ */
+export const zDemoEvent = z.object({
+    olympiad_id: z.string(),
+    kind: z.enum(['registration', 'rule_change']).optional().default('registration')
+});
+
+/**
  * Error
  */
 export const zError = z.object({
@@ -33,19 +41,218 @@ export const zHealthResponse = z.object({
 });
 
 /**
- * HttpExample
+ * LoginRequest
  */
-export const zHttpExample = z.object({
-    upstream_id: z.int(),
-    title: z.string(),
-    completed: z.boolean()
+export const zLoginRequest = z.object({
+    init_data: z.string().min(1).max(16384)
 });
 
 /**
- * HttpExampleResponse
+ * Notification
  */
-export const zHttpExampleResponse = z.object({
-    data: zHttpExample
+export const zNotification = z.object({
+    id: z.string(),
+    olympiad_id: z.string(),
+    kind: z.string(),
+    state: z.string(),
+    due_at: z.number(),
+    deadline: z.number(),
+    is_demo: z.boolean(),
+    sent_at: z.number().nullable(),
+    title: z.string(),
+    text: z.string(),
+    error: z.string().nullable()
+});
+
+/**
+ * NotificationAction
+ */
+export const zNotificationAction = z.object({
+    action: z.enum([
+        'registered',
+        'snooze',
+        'remove',
+        'read'
+    ])
+});
+
+/**
+ * NotificationList
+ */
+export const zNotificationList = z.object({
+    items: z.array(zNotification)
+});
+
+/**
+ * Ok
+ */
+export const zOk = z.object({
+    ok: z.boolean().optional().default(true)
+});
+
+/**
+ * Profile
+ */
+export const zProfile = z.object({
+    grade: z.int().gte(9).lte(11).optional().default(10),
+    admission_year: z.int().gte(2026).lte(2035).optional().default(2028),
+    subjects: z.array(z.enum(['math', 'informatics'])).min(1).max(2).optional(),
+    program_ids: z.array(z.string()).max(2).optional(),
+    timezone: z.string().optional().default('Europe/Moscow'),
+    notifications_enabled: z.boolean().optional().default(false),
+    quiet_start: z.int().gte(0).lte(23).optional().default(22),
+    quiet_end: z.int().gte(0).lte(23).optional().default(8),
+    consent: z.boolean().optional().default(false)
+});
+
+/**
+ * Me
+ */
+export const zMe = z.object({
+    id: z.string(),
+    is_demo: z.boolean(),
+    profile: zProfile
+});
+
+/**
+ * Program
+ */
+export const zProgram = z.object({
+    id: z.string(),
+    name: z.string(),
+    short_name: z.string(),
+    university: z.string().optional().default('НИУ ВШЭ'),
+    campus: z.string().optional().default('Москва'),
+    description: z.string()
+});
+
+/**
+ * SessionResponse
+ */
+export const zSessionResponse = z.object({
+    token: z.string(),
+    expires_at: z.number(),
+    user: zMe
+});
+
+/**
+ * Source
+ */
+export const zSource = z.object({
+    url: z.string(),
+    title: z.string(),
+    checked_at: z.string().optional().default('2026-09-30'),
+    note: z.string().optional().default('')
+});
+
+/**
+ * Benefit
+ */
+export const zBenefit = z.object({
+    program_id: z.string(),
+    admission_year: z.int().optional().default(2026),
+    kind: z.enum([
+        'bvi',
+        '100',
+        'unknown'
+    ]),
+    result: z.string(),
+    diploma_grades: z.array(z.int()).optional(),
+    confirmation: z.string(),
+    explanation: z.string(),
+    source: zSource
+});
+
+/**
+ * Event
+ */
+export const zEvent = z.object({
+    id: z.string(),
+    title: z.string(),
+    kind: z.enum(['registration', 'stage']),
+    starts_at: z.string().nullish(),
+    deadline: z.string().nullish(),
+    source: zSource
+});
+
+/**
+ * Olympiad
+ */
+export const zOlympiad = z.object({
+    id: z.string(),
+    name: z.string(),
+    profile: z.string(),
+    subject: z.enum(['math', 'informatics']),
+    kind: z.enum(['vsosh', 'listed']),
+    season: z.string().optional().default('2026/27'),
+    grades: z.array(z.int()),
+    description: z.string(),
+    registration_url: z.string(),
+    source: zSource,
+    benefits: z.array(zBenefit),
+    events: z.array(zEvent),
+    level: z.string().optional().default('Уточняется для сезона 2026/27')
+});
+
+/**
+ * Catalog
+ */
+export const zCatalog = z.object({
+    programs: z.array(zProgram),
+    olympiads: z.array(zOlympiad),
+    snapshot_date: z.string().optional().default('2026-09-30'),
+    notice: z.string().optional().default('Правила приёма 2026 года — ориентир. Условия вашего года нужно проверить заново.'),
+    demo_enabled: z.boolean(),
+    bot_url: z.string().nullish()
+});
+
+/**
+ * TrackEntry
+ */
+export const zTrackEntry = z.object({
+    olympiad_id: z.string(),
+    status: z.enum([
+        'planned',
+        'registered',
+        'completed'
+    ]),
+    added_at: z.number()
+});
+
+/**
+ * TrackResponse
+ */
+export const zTrackResponse = z.object({
+    items: z.array(zTrackEntry)
+});
+
+/**
+ * TrackUpdate
+ */
+export const zTrackUpdate = z.object({
+    status: z.enum([
+        'planned',
+        'registered',
+        'completed'
+    ])
+});
+
+/**
+ * ValidationError
+ */
+export const zValidationError = z.object({
+    loc: z.array(z.union([z.string(), z.int()])),
+    msg: z.string(),
+    type: z.string(),
+    input: z.unknown().optional(),
+    ctx: z.record(z.string(), z.unknown()).optional()
+});
+
+/**
+ * HTTPValidationError
+ */
+export const zHttpValidationError = z.object({
+    detail: z.array(zValidationError).optional()
 });
 
 /**
@@ -61,4 +268,90 @@ export const zGetReadinessResponse = zHealthResponse;
 /**
  * Successful Response
  */
-export const zCallExampleHttpApiResponse = zHttpExampleResponse;
+export const zGetCatalogResponse = zCatalog;
+
+export const zLoginMaxBody = zLoginRequest;
+
+/**
+ * Successful Response
+ */
+export const zLoginMaxResponse = zSessionResponse;
+
+/**
+ * Successful Response
+ */
+export const zLoginDemoResponse = zSessionResponse;
+
+/**
+ * Successful Response
+ */
+export const zDeleteProfileResponse = zOk;
+
+/**
+ * Successful Response
+ */
+export const zGetMeResponse = zMe;
+
+export const zSaveProfileBody = zProfile;
+
+/**
+ * Successful Response
+ */
+export const zSaveProfileResponse = zMe;
+
+/**
+ * Successful Response
+ */
+export const zGetTrackResponse = zTrackResponse;
+
+export const zRemoveFromTrackPath = z.object({
+    olympiad_id: z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zRemoveFromTrackResponse = zTrackResponse;
+
+export const zUpdateTrackBody = zTrackUpdate;
+
+export const zUpdateTrackPath = z.object({
+    olympiad_id: z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zUpdateTrackResponse = zTrackResponse;
+
+export const zAddToTrackPath = z.object({
+    olympiad_id: z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zAddToTrackResponse = zTrackResponse;
+
+/**
+ * Successful Response
+ */
+export const zGetNotificationsResponse = zNotificationList;
+
+export const zCreateDemoEventBody = zDemoEvent;
+
+/**
+ * Successful Response
+ */
+export const zCreateDemoEventResponse = zNotification;
+
+export const zActOnNotificationBody = zNotificationAction;
+
+export const zActOnNotificationPath = z.object({
+    notification_id: z.string()
+});
+
+/**
+ * Successful Response
+ */
+export const zActOnNotificationResponse = zOk;

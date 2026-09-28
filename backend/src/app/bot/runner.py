@@ -1,13 +1,23 @@
+import asyncio
+import contextlib
+
 import loguru
 import maxapi
+from maxapi.client.default import DefaultConnectionProperties
 from maxapi.enums import UpdateType
 
 from app.bot.dispatcher import create_dispatcher
+from app.bot.notifications import notification_loop
 from app.core.config import BotMode, BotSettings, Settings, get_settings
+from app.db.connector import Database
 
 
 def create_bot(settings: BotSettings) -> maxapi.Bot:
-    return maxapi.Bot(token=settings.token.get_secret_value())
+    # Retrying a POST after an ambiguous transport failure can duplicate a reminder.
+    return maxapi.Bot(
+        token=settings.token.get_secret_value(),
+        default_connection=DefaultConnectionProperties(max_retries=0),
+    )
 
 
 async def configure_webhook(bot: maxapi.Bot, settings: BotSettings) -> None:
@@ -24,7 +34,11 @@ async def configure_webhook(bot: maxapi.Bot, settings: BotSettings) -> None:
 
     result = await bot.subscribe_webhook(
         url=webhook_url,
-        update_types=[UpdateType.MESSAGE_CREATED],
+        update_types=[
+            UpdateType.MESSAGE_CREATED,
+            UpdateType.BOT_STARTED,
+            UpdateType.MESSAGE_CALLBACK,
+        ],
         secret=settings.webhook_secret.get_secret_value(),
     )
     if not result.success:
@@ -34,12 +48,12 @@ async def configure_webhook(bot: maxapi.Bot, settings: BotSettings) -> None:
 
 async def run_long_polling(bot: maxapi.Bot, dispatcher: maxapi.Dispatcher) -> None:
     await bot.delete_webhook()
-    loguru.logger.info("MAX message repeater started in long-polling mode")
+    loguru.logger.info("Olympiad route bot started in long-polling mode")
     try:
-        await dispatcher.start_polling(bot, skip_updates=True)
+        await dispatcher.start_polling(bot, skip_updates=False)
     finally:
         await dispatcher.stop_polling()
-        loguru.logger.info("MAX message repeater long polling stopped")
+        loguru.logger.info("Olympiad route bot long polling stopped")
 
 
 async def run_webhook(
@@ -54,7 +68,7 @@ async def run_webhook(
 
     await configure_webhook(bot, settings)
     loguru.logger.info(
-        "MAX message repeater webhook started at {0}",
+        "Olympiad route bot webhook started at {0}",
         settings.webhook_url,
     )
     try:
@@ -66,7 +80,7 @@ async def run_webhook(
             secret=settings.webhook_secret.get_secret_value(),
         )
     finally:
-        loguru.logger.info("MAX message repeater webhook stopped")
+        loguru.logger.info("Olympiad route bot webhook stopped")
 
 
 async def run_bot(settings: Settings | None = None) -> None:
@@ -75,13 +89,25 @@ async def run_bot(settings: Settings | None = None) -> None:
     if bot_settings is None:
         raise RuntimeError("APP_BOT_TOKEN is required to start the MAX bot")
 
+    if settings.database is None:
+        raise RuntimeError("APP_DATABASE_URL is required to start the MAX bot")
     bot = create_bot(bot_settings)
-    dispatcher = create_dispatcher()
-
+    database = Database(settings.database)
+    worker = None
     try:
+        if not bot_settings.username:
+            info = await bot.get_me()
+            bot_settings.username = info.username or ""
+        dispatcher = create_dispatcher(database, settings)
+        worker = asyncio.create_task(notification_loop(database, bot, settings))
         if bot_settings.mode is BotMode.WEBHOOK:
             await run_webhook(bot, dispatcher, bot_settings)
         else:
             await run_long_polling(bot, dispatcher)
     finally:
+        if worker is not None:
+            worker.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await worker
+        await database.close()
         await bot.close_session()

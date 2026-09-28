@@ -299,6 +299,13 @@ $RECYCLE.BIN/
 
 # Custom rules (everything added below won't be overriden by 'Generate .gitignore File' if you use 'Update' option)
 
+# Local application state and browser test artifacts
+*.db
+*.db-shm
+*.db-wal
+frontend/test-results/
+frontend/playwright-report/
+
 .agents/
 .codex/
 .claude/

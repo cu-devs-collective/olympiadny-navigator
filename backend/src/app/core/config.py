@@ -46,8 +46,8 @@ class DatabaseSettings(pydantic.BaseModel):
         except sqlalchemy.exc.ArgumentError as error:
             raise ValueError("Database URL must be a valid SQLAlchemy URL") from error
 
-        if url.drivername != "postgresql+psycopg":
-            raise ValueError("Database URL must use the postgresql+psycopg async driver")
+        if url.drivername not in {"postgresql+psycopg", "sqlite+aiosqlite"}:
+            raise ValueError("Use postgresql+psycopg or sqlite+aiosqlite")
 
         return value
 
@@ -79,6 +79,7 @@ class CorsSettings(pydantic.BaseModel):
 
 class BotSettings(pydantic.BaseModel):
     token: pydantic.SecretStr
+    username: str = ""
     mode: BotMode = BotMode.LONG_POLLING
     webhook_url: pydantic.HttpUrl | None = None
     webhook_secret: pydantic.SecretStr | None = None
@@ -143,6 +144,10 @@ class Settings(pydantic_settings.BaseSettings):
     cors: CorsSettings | None = None
     database: DatabaseSettings | None = None
     bot: BotSettings | None = None
+    demo_enabled: bool = False
+    session_ttl_seconds: int = pydantic.Field(default=86400, ge=60, le=604800)
+    init_data_ttl_seconds: int = pydantic.Field(default=3600, ge=60, le=86400)
+    scheduler_interval_seconds: int = pydantic.Field(default=15, ge=1)
 
 
 @functools.lru_cache

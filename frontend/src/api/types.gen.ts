@@ -5,6 +5,85 @@ export type ClientOptions = {
 };
 
 /**
+ * Benefit
+ */
+export type Benefit = {
+    /**
+     * Program Id
+     */
+    program_id: string;
+    /**
+     * Admission Year
+     */
+    admission_year?: number;
+    /**
+     * Kind
+     */
+    kind: 'bvi' | '100' | 'unknown';
+    /**
+     * Result
+     */
+    result: string;
+    /**
+     * Diploma Grades
+     */
+    diploma_grades?: Array<number>;
+    /**
+     * Confirmation
+     */
+    confirmation: string;
+    /**
+     * Explanation
+     */
+    explanation: string;
+    source: Source;
+};
+
+/**
+ * Catalog
+ */
+export type Catalog = {
+    /**
+     * Programs
+     */
+    programs: Array<Program>;
+    /**
+     * Olympiads
+     */
+    olympiads: Array<Olympiad>;
+    /**
+     * Snapshot Date
+     */
+    snapshot_date?: string;
+    /**
+     * Notice
+     */
+    notice?: string;
+    /**
+     * Demo Enabled
+     */
+    demo_enabled: boolean;
+    /**
+     * Bot Url
+     */
+    bot_url?: string | null;
+};
+
+/**
+ * DemoEvent
+ */
+export type DemoEvent = {
+    /**
+     * Olympiad Id
+     */
+    olympiad_id: string;
+    /**
+     * Kind
+     */
+    kind?: 'registration' | 'rule_change';
+};
+
+/**
  * Error
  */
 export type Error = {
@@ -32,6 +111,43 @@ export type ErrorResponse = {
 };
 
 /**
+ * Event
+ */
+export type Event = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Kind
+     */
+    kind: 'registration' | 'stage';
+    /**
+     * Starts At
+     */
+    starts_at?: string | null;
+    /**
+     * Deadline
+     */
+    deadline?: string | null;
+    source: Source;
+};
+
+/**
+ * HTTPValidationError
+ */
+export type HttpValidationError = {
+    /**
+     * Detail
+     */
+    detail?: Array<ValidationError>;
+};
+
+/**
  * Health
  */
 export type Health = {
@@ -49,28 +165,338 @@ export type HealthResponse = {
 };
 
 /**
- * HttpExample
+ * LoginRequest
  */
-export type HttpExample = {
+export type LoginRequest = {
     /**
-     * Upstream Id
+     * Init Data
      */
-    upstream_id: number;
+    init_data: string;
+};
+
+/**
+ * Me
+ */
+export type Me = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Is Demo
+     */
+    is_demo: boolean;
+    profile: Profile;
+};
+
+/**
+ * Notification
+ */
+export type Notification = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Olympiad Id
+     */
+    olympiad_id: string;
+    /**
+     * Kind
+     */
+    kind: string;
+    /**
+     * State
+     */
+    state: string;
+    /**
+     * Due At
+     */
+    due_at: number;
+    /**
+     * Deadline
+     */
+    deadline: number;
+    /**
+     * Is Demo
+     */
+    is_demo: boolean;
+    /**
+     * Sent At
+     */
+    sent_at: number | null;
     /**
      * Title
      */
     title: string;
     /**
-     * Completed
+     * Text
      */
-    completed: boolean;
+    text: string;
+    /**
+     * Error
+     */
+    error: string | null;
 };
 
 /**
- * HttpExampleResponse
+ * NotificationAction
  */
-export type HttpExampleResponse = {
-    data: HttpExample;
+export type NotificationAction = {
+    /**
+     * Action
+     */
+    action: 'registered' | 'snooze' | 'remove' | 'read';
+};
+
+/**
+ * NotificationList
+ */
+export type NotificationList = {
+    /**
+     * Items
+     */
+    items: Array<Notification>;
+};
+
+/**
+ * Ok
+ */
+export type Ok = {
+    /**
+     * Ok
+     */
+    ok?: boolean;
+};
+
+/**
+ * Olympiad
+ */
+export type Olympiad = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Profile
+     */
+    profile: string;
+    /**
+     * Subject
+     */
+    subject: 'math' | 'informatics';
+    /**
+     * Kind
+     */
+    kind: 'vsosh' | 'listed';
+    /**
+     * Season
+     */
+    season?: string;
+    /**
+     * Grades
+     */
+    grades: Array<number>;
+    /**
+     * Description
+     */
+    description: string;
+    /**
+     * Registration Url
+     */
+    registration_url: string;
+    source: Source;
+    /**
+     * Benefits
+     */
+    benefits: Array<Benefit>;
+    /**
+     * Events
+     */
+    events: Array<Event>;
+    /**
+     * Level
+     */
+    level?: string;
+};
+
+/**
+ * Profile
+ */
+export type Profile = {
+    /**
+     * Grade
+     */
+    grade?: number;
+    /**
+     * Admission Year
+     */
+    admission_year?: number;
+    /**
+     * Subjects
+     */
+    subjects?: Array<'math' | 'informatics'>;
+    /**
+     * Program Ids
+     */
+    program_ids?: Array<string>;
+    /**
+     * Timezone
+     */
+    timezone?: string;
+    /**
+     * Notifications Enabled
+     */
+    notifications_enabled?: boolean;
+    /**
+     * Quiet Start
+     */
+    quiet_start?: number;
+    /**
+     * Quiet End
+     */
+    quiet_end?: number;
+    /**
+     * Consent
+     */
+    consent?: boolean;
+};
+
+/**
+ * Program
+ */
+export type Program = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Short Name
+     */
+    short_name: string;
+    /**
+     * University
+     */
+    university?: string;
+    /**
+     * Campus
+     */
+    campus?: string;
+    /**
+     * Description
+     */
+    description: string;
+};
+
+/**
+ * SessionResponse
+ */
+export type SessionResponse = {
+    /**
+     * Token
+     */
+    token: string;
+    /**
+     * Expires At
+     */
+    expires_at: number;
+    user: Me;
+};
+
+/**
+ * Source
+ */
+export type Source = {
+    /**
+     * Url
+     */
+    url: string;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Checked At
+     */
+    checked_at?: string;
+    /**
+     * Note
+     */
+    note?: string;
+};
+
+/**
+ * TrackEntry
+ */
+export type TrackEntry = {
+    /**
+     * Olympiad Id
+     */
+    olympiad_id: string;
+    /**
+     * Status
+     */
+    status: 'planned' | 'registered' | 'completed';
+    /**
+     * Added At
+     */
+    added_at: number;
+};
+
+/**
+ * TrackResponse
+ */
+export type TrackResponse = {
+    /**
+     * Items
+     */
+    items: Array<TrackEntry>;
+};
+
+/**
+ * TrackUpdate
+ */
+export type TrackUpdate = {
+    /**
+     * Status
+     */
+    status: 'planned' | 'registered' | 'completed';
+};
+
+/**
+ * ValidationError
+ */
+export type ValidationError = {
+    /**
+     * Location
+     */
+    loc: Array<string | number>;
+    /**
+     * Message
+     */
+    msg: string;
+    /**
+     * Error Type
+     */
+    type: string;
+    /**
+     * Input
+     */
+    input?: unknown;
+    /**
+     * Context
+     */
+    ctx?: {
+        [key: string]: unknown;
+    };
 };
 
 export type GetLivenessData = {
@@ -114,27 +540,293 @@ export type GetReadinessResponses = {
 
 export type GetReadinessResponse = GetReadinessResponses[keyof GetReadinessResponses];
 
-export type CallExampleHttpApiData = {
+export type GetCatalogData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/v1/examples/http';
+    url: '/v1/catalog';
 };
 
-export type CallExampleHttpApiErrors = {
-    /**
-     * Upstream error
-     */
-    502: ErrorResponse;
-};
-
-export type CallExampleHttpApiError = CallExampleHttpApiErrors[keyof CallExampleHttpApiErrors];
-
-export type CallExampleHttpApiResponses = {
+export type GetCatalogResponses = {
     /**
      * Successful Response
      */
-    200: HttpExampleResponse;
+    200: Catalog;
 };
 
-export type CallExampleHttpApiResponse = CallExampleHttpApiResponses[keyof CallExampleHttpApiResponses];
+export type GetCatalogResponse = GetCatalogResponses[keyof GetCatalogResponses];
+
+export type LoginMaxData = {
+    body: LoginRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/auth/max';
+};
+
+export type LoginMaxErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type LoginMaxError = LoginMaxErrors[keyof LoginMaxErrors];
+
+export type LoginMaxResponses = {
+    /**
+     * Successful Response
+     */
+    200: SessionResponse;
+};
+
+export type LoginMaxResponse = LoginMaxResponses[keyof LoginMaxResponses];
+
+export type LoginDemoData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/auth/demo';
+};
+
+export type LoginDemoResponses = {
+    /**
+     * Successful Response
+     */
+    200: SessionResponse;
+};
+
+export type LoginDemoResponse = LoginDemoResponses[keyof LoginDemoResponses];
+
+export type DeleteProfileData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/me';
+};
+
+export type DeleteProfileResponses = {
+    /**
+     * Successful Response
+     */
+    200: Ok;
+};
+
+export type DeleteProfileResponse = DeleteProfileResponses[keyof DeleteProfileResponses];
+
+export type GetMeData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/me';
+};
+
+export type GetMeResponses = {
+    /**
+     * Successful Response
+     */
+    200: Me;
+};
+
+export type GetMeResponse = GetMeResponses[keyof GetMeResponses];
+
+export type SaveProfileData = {
+    body: Profile;
+    path?: never;
+    query?: never;
+    url: '/v1/me';
+};
+
+export type SaveProfileErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SaveProfileError = SaveProfileErrors[keyof SaveProfileErrors];
+
+export type SaveProfileResponses = {
+    /**
+     * Successful Response
+     */
+    200: Me;
+};
+
+export type SaveProfileResponse = SaveProfileResponses[keyof SaveProfileResponses];
+
+export type GetTrackData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/track';
+};
+
+export type GetTrackResponses = {
+    /**
+     * Successful Response
+     */
+    200: TrackResponse;
+};
+
+export type GetTrackResponse = GetTrackResponses[keyof GetTrackResponses];
+
+export type RemoveFromTrackData = {
+    body?: never;
+    path: {
+        /**
+         * Olympiad Id
+         */
+        olympiad_id: string;
+    };
+    query?: never;
+    url: '/v1/track/{olympiad_id}';
+};
+
+export type RemoveFromTrackErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RemoveFromTrackError = RemoveFromTrackErrors[keyof RemoveFromTrackErrors];
+
+export type RemoveFromTrackResponses = {
+    /**
+     * Successful Response
+     */
+    200: TrackResponse;
+};
+
+export type RemoveFromTrackResponse = RemoveFromTrackResponses[keyof RemoveFromTrackResponses];
+
+export type UpdateTrackData = {
+    body: TrackUpdate;
+    path: {
+        /**
+         * Olympiad Id
+         */
+        olympiad_id: string;
+    };
+    query?: never;
+    url: '/v1/track/{olympiad_id}';
+};
+
+export type UpdateTrackErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateTrackError = UpdateTrackErrors[keyof UpdateTrackErrors];
+
+export type UpdateTrackResponses = {
+    /**
+     * Successful Response
+     */
+    200: TrackResponse;
+};
+
+export type UpdateTrackResponse = UpdateTrackResponses[keyof UpdateTrackResponses];
+
+export type AddToTrackData = {
+    body?: never;
+    path: {
+        /**
+         * Olympiad Id
+         */
+        olympiad_id: string;
+    };
+    query?: never;
+    url: '/v1/track/{olympiad_id}';
+};
+
+export type AddToTrackErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AddToTrackError = AddToTrackErrors[keyof AddToTrackErrors];
+
+export type AddToTrackResponses = {
+    /**
+     * Successful Response
+     */
+    200: TrackResponse;
+};
+
+export type AddToTrackResponse = AddToTrackResponses[keyof AddToTrackResponses];
+
+export type GetNotificationsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/notifications';
+};
+
+export type GetNotificationsResponses = {
+    /**
+     * Successful Response
+     */
+    200: NotificationList;
+};
+
+export type GetNotificationsResponse = GetNotificationsResponses[keyof GetNotificationsResponses];
+
+export type CreateDemoEventData = {
+    body: DemoEvent;
+    path?: never;
+    query?: never;
+    url: '/v1/demo/events';
+};
+
+export type CreateDemoEventErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateDemoEventError = CreateDemoEventErrors[keyof CreateDemoEventErrors];
+
+export type CreateDemoEventResponses = {
+    /**
+     * Successful Response
+     */
+    200: Notification;
+};
+
+export type CreateDemoEventResponse = CreateDemoEventResponses[keyof CreateDemoEventResponses];
+
+export type ActOnNotificationData = {
+    body: NotificationAction;
+    path: {
+        /**
+         * Notification Id
+         */
+        notification_id: string;
+    };
+    query?: never;
+    url: '/v1/notifications/{notification_id}/actions';
+};
+
+export type ActOnNotificationErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ActOnNotificationError = ActOnNotificationErrors[keyof ActOnNotificationErrors];
+
+export type ActOnNotificationResponses = {
+    /**
+     * Successful Response
+     */
+    200: Ok;
+};
+
+export type ActOnNotificationResponse = ActOnNotificationResponses[keyof ActOnNotificationResponses];

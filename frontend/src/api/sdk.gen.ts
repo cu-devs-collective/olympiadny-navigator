@@ -4,8 +4,8 @@ import * as z from 'zod';
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CallExampleHttpApiData, CallExampleHttpApiErrors, CallExampleHttpApiResponses, GetLivenessData, GetLivenessResponses, GetReadinessData, GetReadinessErrors, GetReadinessResponses } from './types.gen';
-import { zCallExampleHttpApiResponse, zGetLivenessResponse, zGetReadinessResponse } from './zod.gen';
+import type { ActOnNotificationData, ActOnNotificationErrors, ActOnNotificationResponses, AddToTrackData, AddToTrackErrors, AddToTrackResponses, CreateDemoEventData, CreateDemoEventErrors, CreateDemoEventResponses, DeleteProfileData, DeleteProfileResponses, GetCatalogData, GetCatalogResponses, GetLivenessData, GetLivenessResponses, GetMeData, GetMeResponses, GetNotificationsData, GetNotificationsResponses, GetReadinessData, GetReadinessErrors, GetReadinessResponses, GetTrackData, GetTrackResponses, LoginDemoData, LoginDemoResponses, LoginMaxData, LoginMaxErrors, LoginMaxResponses, RemoveFromTrackData, RemoveFromTrackErrors, RemoveFromTrackResponses, SaveProfileData, SaveProfileErrors, SaveProfileResponses, UpdateTrackData, UpdateTrackErrors, UpdateTrackResponses } from './types.gen';
+import { zActOnNotificationBody, zActOnNotificationPath, zActOnNotificationResponse, zAddToTrackPath, zAddToTrackResponse, zCreateDemoEventBody, zCreateDemoEventResponse, zDeleteProfileResponse, zGetCatalogResponse, zGetLivenessResponse, zGetMeResponse, zGetNotificationsResponse, zGetReadinessResponse, zGetTrackResponse, zLoginDemoResponse, zLoginMaxBody, zLoginMaxResponse, zRemoveFromTrackPath, zRemoveFromTrackResponse, zSaveProfileBody, zSaveProfileResponse, zUpdateTrackBody, zUpdateTrackPath, zUpdateTrackResponse } from './zod.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -52,16 +52,226 @@ export const getReadiness = <ThrowOnError extends boolean = true>(options?: Opti
 });
 
 /**
- * Call External Api
+ * Catalog
  */
-export const callExampleHttpApi = <ThrowOnError extends boolean = true>(options?: Options<CallExampleHttpApiData, ThrowOnError>): RequestResult<CallExampleHttpApiResponses, CallExampleHttpApiErrors, ThrowOnError, 'data'> => (options?.client ?? client).get<CallExampleHttpApiResponses, CallExampleHttpApiErrors, ThrowOnError, 'data'>({
+export const getCatalog = <ThrowOnError extends boolean = true>(options?: Options<GetCatalogData, ThrowOnError>): RequestResult<GetCatalogResponses, unknown, ThrowOnError, 'data'> => (options?.client ?? client).get<GetCatalogResponses, unknown, ThrowOnError, 'data'>({
     requestValidator: async (data) => await z.object({
         body: z.never().optional(),
         path: z.never().optional(),
         query: z.never().optional()
     }).parseAsync(data),
-    responseValidator: async (data) => await zCallExampleHttpApiResponse.parseAsync(data),
+    responseValidator: async (data) => await zGetCatalogResponse.parseAsync(data),
     responseStyle: 'data',
-    url: '/v1/examples/http',
+    url: '/v1/catalog',
     ...options
+});
+
+/**
+ * Login Max
+ */
+export const loginMax = <ThrowOnError extends boolean = true>(options: Options<LoginMaxData, ThrowOnError>): RequestResult<LoginMaxResponses, LoginMaxErrors, ThrowOnError, 'data'> => (options.client ?? client).post<LoginMaxResponses, LoginMaxErrors, ThrowOnError, 'data'>({
+    requestValidator: async (data) => await z.object({
+        body: zLoginMaxBody,
+        path: z.never().optional(),
+        query: z.never().optional()
+    }).parseAsync(data),
+    responseValidator: async (data) => await zLoginMaxResponse.parseAsync(data),
+    responseStyle: 'data',
+    url: '/v1/auth/max',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Login Demo
+ */
+export const loginDemo = <ThrowOnError extends boolean = true>(options?: Options<LoginDemoData, ThrowOnError>): RequestResult<LoginDemoResponses, unknown, ThrowOnError, 'data'> => (options?.client ?? client).post<LoginDemoResponses, unknown, ThrowOnError, 'data'>({
+    requestValidator: async (data) => await z.object({
+        body: z.never().optional(),
+        path: z.never().optional(),
+        query: z.never().optional()
+    }).parseAsync(data),
+    responseValidator: async (data) => await zLoginDemoResponse.parseAsync(data),
+    responseStyle: 'data',
+    url: '/v1/auth/demo',
+    ...options
+});
+
+/**
+ * Remove Profile
+ */
+export const deleteProfile = <ThrowOnError extends boolean = true>(options?: Options<DeleteProfileData, ThrowOnError>): RequestResult<DeleteProfileResponses, unknown, ThrowOnError, 'data'> => (options?.client ?? client).delete<DeleteProfileResponses, unknown, ThrowOnError, 'data'>({
+    requestValidator: async (data) => await z.object({
+        body: z.never().optional(),
+        path: z.never().optional(),
+        query: z.never().optional()
+    }).parseAsync(data),
+    responseValidator: async (data) => await zDeleteProfileResponse.parseAsync(data),
+    responseStyle: 'data',
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/me',
+    ...options
+});
+
+/**
+ * Me
+ */
+export const getMe = <ThrowOnError extends boolean = true>(options?: Options<GetMeData, ThrowOnError>): RequestResult<GetMeResponses, unknown, ThrowOnError, 'data'> => (options?.client ?? client).get<GetMeResponses, unknown, ThrowOnError, 'data'>({
+    requestValidator: async (data) => await z.object({
+        body: z.never().optional(),
+        path: z.never().optional(),
+        query: z.never().optional()
+    }).parseAsync(data),
+    responseValidator: async (data) => await zGetMeResponse.parseAsync(data),
+    responseStyle: 'data',
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/me',
+    ...options
+});
+
+/**
+ * Profile
+ */
+export const saveProfile = <ThrowOnError extends boolean = true>(options: Options<SaveProfileData, ThrowOnError>): RequestResult<SaveProfileResponses, SaveProfileErrors, ThrowOnError, 'data'> => (options.client ?? client).put<SaveProfileResponses, SaveProfileErrors, ThrowOnError, 'data'>({
+    requestValidator: async (data) => await z.object({
+        body: zSaveProfileBody,
+        path: z.never().optional(),
+        query: z.never().optional()
+    }).parseAsync(data),
+    responseValidator: async (data) => await zSaveProfileResponse.parseAsync(data),
+    responseStyle: 'data',
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/me',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Track
+ */
+export const getTrack = <ThrowOnError extends boolean = true>(options?: Options<GetTrackData, ThrowOnError>): RequestResult<GetTrackResponses, unknown, ThrowOnError, 'data'> => (options?.client ?? client).get<GetTrackResponses, unknown, ThrowOnError, 'data'>({
+    requestValidator: async (data) => await z.object({
+        body: z.never().optional(),
+        path: z.never().optional(),
+        query: z.never().optional()
+    }).parseAsync(data),
+    responseValidator: async (data) => await zGetTrackResponse.parseAsync(data),
+    responseStyle: 'data',
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/track',
+    ...options
+});
+
+/**
+ * Remove
+ */
+export const removeFromTrack = <ThrowOnError extends boolean = true>(options: Options<RemoveFromTrackData, ThrowOnError>): RequestResult<RemoveFromTrackResponses, RemoveFromTrackErrors, ThrowOnError, 'data'> => (options.client ?? client).delete<RemoveFromTrackResponses, RemoveFromTrackErrors, ThrowOnError, 'data'>({
+    requestValidator: async (data) => await z.object({
+        body: z.never().optional(),
+        path: zRemoveFromTrackPath,
+        query: z.never().optional()
+    }).parseAsync(data),
+    responseValidator: async (data) => await zRemoveFromTrackResponse.parseAsync(data),
+    responseStyle: 'data',
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/track/{olympiad_id}',
+    ...options
+});
+
+/**
+ * Change
+ */
+export const updateTrack = <ThrowOnError extends boolean = true>(options: Options<UpdateTrackData, ThrowOnError>): RequestResult<UpdateTrackResponses, UpdateTrackErrors, ThrowOnError, 'data'> => (options.client ?? client).patch<UpdateTrackResponses, UpdateTrackErrors, ThrowOnError, 'data'>({
+    requestValidator: async (data) => await z.object({
+        body: zUpdateTrackBody,
+        path: zUpdateTrackPath,
+        query: z.never().optional()
+    }).parseAsync(data),
+    responseValidator: async (data) => await zUpdateTrackResponse.parseAsync(data),
+    responseStyle: 'data',
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/track/{olympiad_id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Add
+ */
+export const addToTrack = <ThrowOnError extends boolean = true>(options: Options<AddToTrackData, ThrowOnError>): RequestResult<AddToTrackResponses, AddToTrackErrors, ThrowOnError, 'data'> => (options.client ?? client).put<AddToTrackResponses, AddToTrackErrors, ThrowOnError, 'data'>({
+    requestValidator: async (data) => await z.object({
+        body: z.never().optional(),
+        path: zAddToTrackPath,
+        query: z.never().optional()
+    }).parseAsync(data),
+    responseValidator: async (data) => await zAddToTrackResponse.parseAsync(data),
+    responseStyle: 'data',
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/track/{olympiad_id}',
+    ...options
+});
+
+/**
+ * Notifications
+ */
+export const getNotifications = <ThrowOnError extends boolean = true>(options?: Options<GetNotificationsData, ThrowOnError>): RequestResult<GetNotificationsResponses, unknown, ThrowOnError, 'data'> => (options?.client ?? client).get<GetNotificationsResponses, unknown, ThrowOnError, 'data'>({
+    requestValidator: async (data) => await z.object({
+        body: z.never().optional(),
+        path: z.never().optional(),
+        query: z.never().optional()
+    }).parseAsync(data),
+    responseValidator: async (data) => await zGetNotificationsResponse.parseAsync(data),
+    responseStyle: 'data',
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/notifications',
+    ...options
+});
+
+/**
+ * Demo Event
+ */
+export const createDemoEvent = <ThrowOnError extends boolean = true>(options: Options<CreateDemoEventData, ThrowOnError>): RequestResult<CreateDemoEventResponses, CreateDemoEventErrors, ThrowOnError, 'data'> => (options.client ?? client).post<CreateDemoEventResponses, CreateDemoEventErrors, ThrowOnError, 'data'>({
+    requestValidator: async (data) => await z.object({
+        body: zCreateDemoEventBody,
+        path: z.never().optional(),
+        query: z.never().optional()
+    }).parseAsync(data),
+    responseValidator: async (data) => await zCreateDemoEventResponse.parseAsync(data),
+    responseStyle: 'data',
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/demo/events',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Action
+ */
+export const actOnNotification = <ThrowOnError extends boolean = true>(options: Options<ActOnNotificationData, ThrowOnError>): RequestResult<ActOnNotificationResponses, ActOnNotificationErrors, ThrowOnError, 'data'> => (options.client ?? client).post<ActOnNotificationResponses, ActOnNotificationErrors, ThrowOnError, 'data'>({
+    requestValidator: async (data) => await z.object({
+        body: zActOnNotificationBody,
+        path: zActOnNotificationPath,
+        query: z.never().optional()
+    }).parseAsync(data),
+    responseValidator: async (data) => await zActOnNotificationResponse.parseAsync(data),
+    responseStyle: 'data',
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/notifications/{notification_id}/actions',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
 });
