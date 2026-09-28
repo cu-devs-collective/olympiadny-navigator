@@ -1,0 +1,30 @@
+services:
+  frontend:
+    build:
+      context: ..
+      dockerfile: frontend/docker/Dockerfile
+      target: development
+    restart: unless-stopped
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      VITE_API_PROXY_TARGET: ${VITE_API_PROXY_TARGET:-http://host.docker.internal:8000}
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-5173}:5173"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./index.html:/opt/app/frontend/index.html:ro
+      - ./openapi-ts.config.ts:/opt/app/frontend/openapi-ts.config.ts:ro
+      - ./public:/opt/app/frontend/public:ro
+      - ./src:/opt/app/frontend/src
+      - ./tsconfig.json:/opt/app/frontend/tsconfig.json:ro
+      - ./tsconfig.app.json:/opt/app/frontend/tsconfig.app.json:ro
+      - ./tsconfig.node.json:/opt/app/frontend/tsconfig.node.json:ro
+      - ./vite.config.ts:/opt/app/frontend/vite.config.ts:ro
+      - ../backend/spec/openapi.yaml:/opt/app/backend/spec/openapi.yaml:ro
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://localhost:5173/"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s

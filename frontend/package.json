@@ -5,7 +5,10 @@
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
+    "generate:api": "openapi-ts",
+    "predev": "openapi-ts",
     "dev": "vite",
+    "prebuild": "openapi-ts",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b --noEmit",
     "lint": "eslint .",

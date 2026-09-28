@@ -1,11 +1,33 @@
 import { useState } from 'react'
+import { callExampleHttpApi, type HttpExample } from './api'
 import heroImg from './assets/hero.png'
 import reactLogo from './assets/react.svg'
 import viteLogo from './assets/vite.svg'
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [example, setExample] = useState<HttpExample | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+
+  const loadExample = async () => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await callExampleHttpApi()
+      setExample(response.data)
+    } catch (requestError) {
+      setExample(null)
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'The API request failed',
+      )
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
     <>
@@ -18,16 +40,36 @@ function App() {
         <div>
           <h1>Get started</h1>
           <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
+            Generated API client for <code>GET /api/v1/examples/http</code>
           </p>
         </div>
         <button
           type="button"
           className="counter"
-          onClick={() => setCount((count) => count + 1)}
+          onClick={loadExample}
+          disabled={isLoading}
         >
-          Count is {count}
+          {isLoading ? 'Calling API…' : 'Call example API'}
         </button>
+        <div className="api-result" aria-live="polite">
+          {example && (
+            <dl>
+              <div>
+                <dt>Upstream ID</dt>
+                <dd>{example.upstream_id}</dd>
+              </div>
+              <div>
+                <dt>Title</dt>
+                <dd>{example.title}</dd>
+              </div>
+              <div>
+                <dt>Completed</dt>
+                <dd>{example.completed ? 'Yes' : 'No'}</dd>
+              </div>
+            </dl>
+          )}
+          {error && <p className="api-error">{error}</p>}
+        </div>
       </section>
 
       <div className="ticks"></div>

@@ -1,0 +1,9 @@
+
+services:
+  api: {}
+
+  frontend: {}
+
+  bot: {}
+
+  postgres: {}
