@@ -1,0 +1,12 @@
+services:
+  frontend:
+    networks:
+      default:
+      routing:
+        aliases:
+          - vadim-max-web
+
+networks:
+  routing:
+    external: true
+    name: routing

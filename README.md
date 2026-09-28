@@ -46,7 +46,7 @@ docker compose down
 
 1. Заполните `APP_BOT_TOKEN` и `APP_BOT_USERNAME` в корневом `.env`. Имя — ник выданного бота без `@`. Ник можно получить через официальный `GET /me`; рабочий токен не передавайте frontend и не коммитьте.
 2. Разместите frontend по публичному HTTPS-адресу. TLS завершает внешний reverse proxy; локальный Nginx слушает HTTP. Один origin должен обслуживать и приложение, и `/api`.
-3. Передайте HTTPS-ссылку организаторам для привязки мини-приложения к выданному боту, как описано в [FAQ](.agents/sources/Общий%20FAQ.pdf). Этот шаг вне кода и пока не выполнен.
+3. Передайте HTTPS-ссылку организаторам для привязки мини-приложения к выданному боту, как описано в [FAQ](.agents/sources/Общий%20FAQ.pdf). Привязка на стороне MAX проверяется открытием приложения из бота.
 4. Запустите бота и API с одним токеном и одной базой:
 
 ```bash
@@ -159,7 +159,7 @@ pnpm test:e2e
 
 OpenAPI 3.1: [backend/spec/openapi.yaml](backend/spec/openapi.yaml); интерактивная документация — `/api/docs`. После изменения API выполните `uv run python tools/generate_openapi.py` из backend и `pnpm generate:api` из frontend.
 
-[DATA-API.yaml](DATA-API.yaml) содержит проверки полного сценария с отдельным demo-пользователем и удалением после проверки. Перед сдачей **замените `api.baseUrl` на действующий публичный HTTPS-адрес**. Значение `https://your-host.example/api` — явный placeholder, а не опубликованный сервис. Конфигурация проверена официальным [валидатором организаторов](https://gitverse.ru/stasnorman/example-data-api); для прогона нужен `APP_DEMO_ENABLED=true`. Для живого прогона сценария на локальном стенде:
+[DATA-API.yaml](DATA-API.yaml) содержит проверки полного сценария с отдельным demo-пользователем и удалением после проверки. `api.baseUrl` настроен на `https://max-hackathon.centraluniversity.dev/api`. Конфигурация проверена официальным [валидатором организаторов](https://gitverse.ru/stasnorman/example-data-api); для прогона нужен `APP_DEMO_ENABLED=true`. Для живого прогона сценария на локальном стенде:
 
 ```bash
 cd backend

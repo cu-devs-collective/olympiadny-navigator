@@ -1,10 +1,10 @@
-# Replace api.baseUrl with your deployed HTTPS URL before submission.
+# Public hackathon deployment.
 # Requires APP_DEMO_ENABLED=true. Credentials are created per run, never embedded.
 schemaVersion: '1.0'
 solution:
   name: Олимпиадный маршрут
 api:
-  baseUrl: https://your-host.example/api
+  baseUrl: https://max-hackathon.centraluniversity.dev/api
   openapi: ./backend/spec/openapi.yaml
   defaultHeaders:
     Accept: application/json
