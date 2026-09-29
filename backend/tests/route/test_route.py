@@ -160,7 +160,9 @@ def test_valid_max_signature_with_urlencoded_characters():
 def test_unknown_rules_and_expired_deadlines_are_not_invented(client):
     catalog = client.get("/api/v1/catalog").json()
     higher = next(o for o in catalog["olympiads"] if o["id"] == "vp-math")
-    assert all(b["kind"] == "unknown" for b in higher["benefits"])
+    assert all(
+        b["kind"] == "unknown" for b in higher["benefits"] if b["program_id"].startswith("itmo-")
+    )
     assert higher["events"][0]["deadline"] == "2026-09-22T14:00:00+03:00"
     assert higher["events"][1]["deadline"] is None
     assert all(b["admission_year"] == 2026 for o in catalog["olympiads"] for b in o["benefits"])
@@ -514,7 +516,7 @@ def test_chat_onboarding_and_actions_without_miniapp(client, settings):
         assert "включены" in await send("/resume")
         assert "Физтех" in await send("/add fiztech-math")
         assert "Физтех" in await send("/track")
-        assert "не проверено" in await send("/show fiztech-math")
+        assert "100 баллов" in await send("/show fiztech-math")
         assert "Регистрация отмечена" in await send("/registered fiztech-math")
         await send("/accept", user_id=778)
         assert "пуст" in await send("/track", user_id=778)
@@ -661,3 +663,75 @@ def test_extended_subjects_are_saved_and_supported_by_catalog(client):
         o["subject"] for o in catalog["olympiads"]
     }
     assert client.put("/api/v1/track/vsosh-chemistry", headers=headers).status_code == 200
+
+
+def test_many_programs_and_catalog_provenance(client):
+    headers = login(client)
+    profile = setup_profile(client, headers)
+    catalog = client.get("/api/v1/catalog").json()
+    profile["program_ids"] = [p["id"] for p in catalog["programs"]]
+    saved = client.put("/api/v1/me", headers=headers, json=profile)
+    assert saved.status_code == 200
+    assert len(saved.json()["profile"]["program_ids"]) == 4
+    olympiads = {o["id"]: o for o in catalog["olympiads"]}
+    assert len(olympiads) == 32
+    assert olympiads["fiztech-math"]["registry_level"] == 2
+    assert olympiads["fiztech-physics"]["registry_level"] == 1
+    assert olympiads["fiztech-physics"]["registry_season"] == "2025/26"
+    assert olympiads["vsosh-math"]["registry_level"] is None
+    assert "ВсОШ" in olympiads["vsosh-math"]["aliases"]
+    vp = {b["program_id"]: b for b in olympiads["vp-math"]["benefits"]}
+    assert vp["hse-pmi"]["kind"] == "bvi"
+    assert vp["hse-pmi"]["diploma_grades"] == [11]
+    assert vp["hse-pmi"]["diploma_validity_years"] == 4
+    assert "85" in vp["hse-pmi"]["confirmation"]
+    assert "80" in vp["hse-se"]["confirmation"]
+    assert vp["itmo-ct"]["diploma_validity_years"] is None
+
+
+def test_chat_deeplink_keeps_consent_and_catalog_paginates(client, settings):
+    from types import SimpleNamespace
+
+    from maxapi.enums import UpdateType
+
+    from app.bot.chat import respond
+    from app.bot.handlers.route import create_route_router
+    from app.db.models.route import Student
+
+    headers = login(client, 888)
+    setup_profile(client, headers)
+    client.put("/api/v1/track/vsosh-math", headers=headers)
+
+    async def run():
+        database = Database(settings.database)
+        handlers = {
+            h.update_type: h.func_event
+            for h in create_route_router(database, settings).event_handlers
+        }
+        bot = SimpleNamespace(send_message=AsyncMock())
+        await handlers[UpdateType.BOT_STARTED](
+            SimpleNamespace(
+                bot=bot,
+                user=SimpleNamespace(user_id=888),
+                payload="navigator",
+            )
+        )
+        assert "Математика" in bot.send_message.call_args.kwargs["text"]
+        async with database.session_factory() as db:
+            user = await db.get(Student, "max:888")
+            assert user is not None
+            assert user.profile["consent"] is True
+            for p in ["itmo-ct", "itmo-software"]:
+                await respond(db, user, f"/goal {p}", True)
+            assert len(user.profile["program_ids"]) == 4
+            result = await respond(db, user, "всош", True)
+            assert "13" in result.text
+            assert len(result.rows) == 13  # 12 results plus navigation
+            assert "ВсОШ" in result.rows[0][0].text
+            result = await respond(db, user, "/catalog-page 1 всош", True)
+            assert len(result.rows) == 2
+            result = await respond(db, user, "/catalog", True)
+            assert len(result.rows) == 13
+        await database.close()
+
+    asyncio.run(run())

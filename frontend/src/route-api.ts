@@ -23,6 +23,7 @@ declare global {
   interface Window {
     WebApp?: {
       initData?: string;
+      platform?: string;
       ready?: () => void;
       close?: () => void;
       openLink?: (url: string) => void;
@@ -117,15 +118,22 @@ export function openSource(url: string) {
   else window.open(url, "_blank", "noopener,noreferrer");
 }
 
-// MAX's openMaxLink is for mini-app links; returning to this bot uses WebApp.close.
+// Chat deep links use start; openMaxLink is documented only for mini-apps.
 export function openChat(url: string) {
-  if (window.WebApp?.initData && window.WebApp.close) {
+  const link = new URL(url);
+  link.searchParams.set("start", "navigator");
+  // This is the web-chat URL exposed by MAX's own public bot landing page.
+  // Skip that landing page in the web client, where its native-app redirect is unhelpful.
+  if (window.WebApp?.platform === "web") link.hostname = "web.max.ru";
+  if (window.WebApp?.initData && window.WebApp.openLink) {
     try {
-      window.WebApp.close();
+      window.WebApp.openLink(link.href);
       return;
     } catch {
-      /* Use the regular link fallback. */
+      // Older clients can still follow the public bot link.
     }
   }
-  window.location.assign(url);
+  if (window.self !== window.top)
+    window.open(link.href, "_blank", "noopener,noreferrer");
+  else window.location.assign(link.href);
 }

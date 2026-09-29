@@ -384,6 +384,15 @@ components:
           title: Explanation
         source:
           $ref: "#/components/schemas/Source"
+        diploma_validity_years:
+          anyOf:
+            - type: integer
+            - type: "null"
+          title: Diploma Validity Years
+        validity_source:
+          anyOf:
+            - $ref: "#/components/schemas/Source"
+            - type: "null"
       type: object
       required:
         - program_id
@@ -723,6 +732,29 @@ components:
           type: string
           title: Level
           default: Уточняется для сезона 2026/27
+        registry_level:
+          anyOf:
+            - type: integer
+              enum:
+                - 1
+                - 2
+                - 3
+            - type: "null"
+          title: Registry Level
+        registry_season:
+          anyOf:
+            - type: string
+            - type: "null"
+          title: Registry Season
+        registry_source:
+          anyOf:
+            - $ref: "#/components/schemas/Source"
+            - type: "null"
+        aliases:
+          items:
+            type: string
+          type: array
+          title: Aliases
       type: object
       required:
         - id
@@ -775,7 +807,6 @@ components:
           items:
             type: string
           type: array
-          maxItems: 2
           title: Program Ids
         timezone:
           type: string

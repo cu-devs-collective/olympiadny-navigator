@@ -80,9 +80,7 @@ OLYMPIADS = [
         registration_url=VSOSH.url,
         source=VSOSH,
         benefits=[vsosh_benefit(p.id, "математика") for p in PROGRAMS],
-        events=[
-            Event(id="school", title="Школьный этап: уточните дату", kind="stage", source=VSOSH)
-        ],
+        events=[Event(id="school", title="Школьный этап", kind="stage", source=VSOSH)],
     ),
     Olympiad(
         id="vsosh-programming",
@@ -96,9 +94,7 @@ OLYMPIADS = [
         registration_url=VSOSH.url,
         source=VSOSH,
         benefits=[vsosh_benefit(p.id, "программирование") for p in PROGRAMS],
-        events=[
-            Event(id="school", title="Школьный этап: уточните дату", kind="stage", source=VSOSH)
-        ],
+        events=[Event(id="school", title="Школьный этап", kind="stage", source=VSOSH)],
     ),
     Olympiad(
         id="vsosh-ai",
@@ -114,9 +110,7 @@ OLYMPIADS = [
         registration_url=VSOSH.url,
         source=VSOSH,
         benefits=[vsosh_benefit("hse-pmi", "искусственный интеллект"), unknown_benefit("hse-se")],
-        events=[
-            Event(id="school", title="Школьный этап: уточните дату", kind="stage", source=VSOSH)
-        ],
+        events=[Event(id="school", title="Школьный этап", kind="stage", source=VSOSH)],
     ),
     *[
         Olympiad(
@@ -154,7 +148,7 @@ OLYMPIADS = [
 MIPT = Source(
     url="https://olymp-online.mipt.ru/",
     title="Физтех · расписание 2026/27",
-    note="Для первого тура нужны регистрация и подтверждение данных до 10 октября, 10:00 мск.",
+    note="Регистрация и подтверждение данных — не позднее 24 часов до тура. Время московское.",
 )
 LOMONOSOV = Source(
     url="https://olymp.msu.ru/",
@@ -322,6 +316,258 @@ for subject in SUBJECTS[2:]:
             events=[Event(id="school", title="Школьный этап", kind="stage", source=VSOSH)],
         )
     )
+
+# Levels are tied to a published registry edition, not inferred for a future season.
+REGISTRY = Source(
+    url="https://rsr-olymp.ru/archive/2025",
+    title="РСОШ · перечень 2025/26 · приказ № 669 от 30.08.2025",
+    note="Уровень относится к профилю в перечне 2025/26, а не ко всем профилям олимпиады.",
+)
+VALIDITY = Source(
+    url="https://ba.hse.ru/olimpinfo",
+    title="ВШЭ · срок действия олимпиадного диплома",
+    note="Четыре года после года проведения. БВИ зависит от правил программы в год поступления.",
+)
+for subject in SUBJECTS:
+    if subject.id in {
+        "physics",
+        "chemistry",
+        "biology",
+        "history",
+        "social",
+        "russian",
+        "literature",
+        "english",
+    }:
+        OLYMPIADS.append(
+            Olympiad(
+                id=f"lomonosov-{subject.id}",
+                name="Ломоносов",
+                profile=subject.name,
+                subject=subject.id,
+                kind="listed",
+                grades=[9, 10, 11],
+                description="Профиль олимпиады МГУ. Отборочный этап сезона 2026/27 — "
+                "октябрь-декабрь.",
+                source=LOMONOSOV,
+                registration_url=LOMONOSOV.url,
+                benefits=[],
+                events=[
+                    Event(
+                        id="registration",
+                        title="Регистрация · вторая половина октября",
+                        kind="registration",
+                        source=LOMONOSOV,
+                    )
+                ],
+            )
+        )
+OLYMPIADS.extend(
+    [
+        Olympiad(
+            id="fiztech-physics",
+            name="Физтех",
+            profile="Физика",
+            subject="physics",
+            kind="listed",
+            grades=[9, 10, 11],
+            source=MIPT,
+            registration_url=MIPT.url,
+            description="Онлайн-отбор МФТИ: 4 октября и 25 октября. Для участия "
+            "подтвердите профиль заранее.",
+            benefits=[],
+            events=[
+                Event(
+                    id="registration-1",
+                    title="Регистрация на I тур",
+                    kind="registration",
+                    starts_at="2026-09-07T10:00:00+03:00",
+                    deadline="2026-10-03T10:00:00+03:00",
+                    source=MIPT,
+                ),
+                Event(
+                    id="qualifier-1",
+                    title="Начало I тура",
+                    kind="stage",
+                    starts_at="2026-10-04T10:00:00+03:00",
+                    deadline="2026-10-04T10:00:00+03:00",
+                    source=MIPT,
+                ),
+                Event(
+                    id="registration-2",
+                    title="Регистрация на II тур",
+                    kind="registration",
+                    deadline="2026-10-24T08:00:00+03:00",
+                    source=MIPT,
+                ),
+                Event(
+                    id="qualifier-2",
+                    title="Начало II тура",
+                    kind="stage",
+                    starts_at="2026-10-25T08:00:00+03:00",
+                    source=MIPT,
+                ),
+            ],
+        ),
+        Olympiad(
+            id="rosatom-physics",
+            name="Росатом",
+            profile="Физика",
+            subject="physics",
+            kind="listed",
+            grades=[9, 10, 11],
+            source=ROSATOM,
+            registration_url="https://org.mephi.ru/",
+            description="Олимпиада НИЯУ МИФИ. Интернет-отбор: 17 ноября — 21 декабря "
+            "2026; на решение даётся 3 часа.",
+            benefits=[],
+            events=[
+                Event(
+                    id="online",
+                    title="Интернет-тур · 17 ноября — 21 декабря",
+                    kind="stage",
+                    source=ROSATOM,
+                )
+            ],
+        ),
+        Olympiad(
+            id="moscow-math",
+            name="Московская олимпиада школьников",
+            profile="Математика",
+            subject="math",
+            kind="listed",
+            grades=[9, 10, 11],
+            source=REGISTRY,
+            registration_url="https://olympiads.mccme.ru/mmo/",
+            description="Московская математическая олимпиада (ММО). Профиль первого "
+            "уровня в перечне РСОШ 2025/26.",
+            benefits=[],
+            events=[],
+            aliases=["ММО", "МОШ"],
+        ),
+        Olympiad(
+            id="spbu-informatics",
+            name="Олимпиада школьников СПбГУ",
+            profile="Информатика",
+            subject="informatics",
+            kind="listed",
+            grades=[9, 10, 11],
+            source=REGISTRY,
+            registration_url="https://olympiada.spbu.ru/",
+            description="Олимпиада Санкт-Петербургского государственного университета. "
+            "Профиль первого уровня в перечне 2025/26.",
+            benefits=[],
+            events=[],
+            aliases=["СПБГУ", "Санкт-Петербургский государственный университет"],
+        ),
+        Olympiad(
+            id="technocup-informatics",
+            name="ТехноКубок",
+            profile="Программирование",
+            subject="informatics",
+            kind="listed",
+            grades=[9, 10, 11],
+            source=REGISTRY,
+            registration_url="https://techno-cup.ru/",
+            description="Олимпиада по программированию. Второй уровень по информатике в "
+            "перечне РСОШ 2025/26.",
+            benefits=[],
+            events=[],
+            aliases=["Технокубок", "информатика"],
+        ),
+    ]
+)
+LEVELS: dict[str, Literal[1, 2, 3]] = {
+    "vp-math": 1,
+    "vp-informatics": 1,
+    "fiztech-math": 2,
+    "fiztech-physics": 1,
+    "lomonosov-math": 1,
+    "lomonosov-informatics": 2,
+    "rosatom-math": 2,
+    "rosatom-physics": 1,
+    "moscow-math": 1,
+    "spbu-informatics": 1,
+    "technocup-informatics": 2,
+}
+# Read from the two program-specific 2026 admission tables, including merged PDF cells.
+PROGRAM_RULES = {
+    "hse-pmi": Source(
+        url="https://ba.hse.ru/mirror/pubs/share/1120646366",
+        title="ВШЭ · ПМИ · особые права 2026, приложение 2",
+    ),
+    "hse-se": Source(
+        url="https://ba.hse.ru/mirror/pubs/share/1120646612",
+        title="ВШЭ · Программная инженерия · особые права 2026, приложение 2",
+    ),
+}
+for olympiad in OLYMPIADS:
+    if olympiad.id == "vsosh-physics":
+        olympiad.benefits = [vsosh_benefit(p, "физика") for p in PROGRAM_RULES]
+    if olympiad.id not in {
+        "vp-math",
+        "vp-informatics",
+        "fiztech-math",
+        "rosatom-math",
+        "lomonosov-math",
+        "lomonosov-informatics",
+        "lomonosov-russian",
+        "moscow-math",
+        "spbu-informatics",
+        "technocup-informatics",
+    }:
+        continue
+    for program_id, rule_source in PROGRAM_RULES.items():
+        bvi = olympiad.id.startswith("vp-") or (
+            program_id == "hse-se"
+            and olympiad.id
+            in {
+                "moscow-math",
+                "spbu-informatics",
+                "technocup-informatics",
+            }
+        )
+        winner_only = bvi and (program_id == "hse-pmi" or olympiad.id == "spbu-informatics")
+        threshold = (
+            (85 if program_id == "hse-pmi" else 80)
+            if olympiad.subject == "math"
+            else (75 if olympiad.subject == "russian" else (90 if program_id == "hse-pmi" else 85))
+        )
+        subject_name = next(s.name for s in SUBJECTS if s.id == olympiad.subject)
+        benefit = Benefit(
+            program_id=program_id,
+            kind="bvi" if bvi else "100",
+            diploma_grades=[11],
+            result="Победитель заключительного этапа"
+            if winner_only
+            else "Победитель или призёр заключительного этапа",
+            confirmation=f"ЕГЭ: {subject_name.lower()} — от {threshold} баллов. "
+            "Для отдельных категорий поступающих действует порог 65 (см. источник).",
+            explanation=(
+                "Призёрам доступно 100 баллов по предмету вместо БВИ. " if winner_only else ""
+            )
+            + "Учитывается диплом за 11 класс; правила приёма 2026 года.",
+            source=rule_source,
+        )
+        olympiad.benefits = [b for b in olympiad.benefits if b.program_id != program_id]
+        olympiad.benefits.append(benefit)
+
+for olympiad in OLYMPIADS:
+    if olympiad.id.startswith("lomonosov-"):
+        LEVELS.setdefault(olympiad.id, 1)
+    if olympiad.kind == "vsosh":
+        olympiad.aliases.extend(["ВсОШ", "всеросс", "всероссийская", "всош " + olympiad.profile])
+        if olympiad.subject == "informatics":
+            olympiad.aliases.append("информатика")
+    if olympiad.id in LEVELS:
+        olympiad.registry_level = LEVELS[olympiad.id]
+        olympiad.registry_season = "2025/26"
+        olympiad.registry_source = REGISTRY
+        olympiad.level = f"{olympiad.registry_level} уровень РСОШ · 2025/26"
+    for benefit in olympiad.benefits:
+        if benefit.kind != "unknown":
+            benefit.diploma_validity_years = 4
+            benefit.validity_source = VALIDITY
 
 BY_ID = {item.id: item for item in OLYMPIADS}
 

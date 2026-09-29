@@ -117,7 +117,7 @@ export const zProfile = z.object({
         'geography',
         'economics'
     ])).min(1).max(12).optional(),
-    program_ids: z.array(z.string()).max(2).optional(),
+    program_ids: z.array(z.string()).optional(),
     timezone: z.string().optional().default('Europe/Moscow'),
     notifications_enabled: z.boolean().optional().default(false),
     quiet_start: z.int().gte(0).lte(23).optional().default(22),
@@ -182,7 +182,9 @@ export const zBenefit = z.object({
     diploma_grades: z.array(z.int()).optional(),
     confirmation: z.string(),
     explanation: z.string(),
-    source: zSource
+    source: zSource,
+    diploma_validity_years: z.int().nullish(),
+    validity_source: zSource.nullish()
 });
 
 /**
@@ -226,7 +228,15 @@ export const zOlympiad = z.object({
     source: zSource,
     benefits: z.array(zBenefit),
     events: z.array(zEvent),
-    level: z.string().optional().default('Уточняется для сезона 2026/27')
+    level: z.string().optional().default('Уточняется для сезона 2026/27'),
+    registry_level: z.union([
+        z.literal(1),
+        z.literal(2),
+        z.literal(3)
+    ]).nullish(),
+    registry_season: z.string().nullish(),
+    registry_source: zSource.nullish(),
+    aliases: z.array(z.string()).optional()
 });
 
 /**

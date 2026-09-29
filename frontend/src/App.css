@@ -1000,7 +1000,7 @@ footer {
 }
 .subject-options {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 12px 8px;
   max-height: 185px;
   overflow: auto;
@@ -1008,8 +1008,8 @@ footer {
 }
 .profile-form .subject-options label {
   font-size: 12px;
-  align-items: flex-start;
-  overflow-wrap: anywhere;
+  align-items: center;
+  white-space: nowrap;
 }
 .filters > select {
   max-width: 240px;
@@ -1062,4 +1062,34 @@ main {
   z-index: 2;
   background: #fff;
   padding: 8px 0;
+}
+
+.registry-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 12px 0 0;
+}
+.registry-detail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin: 16px 0;
+}
+.undated-events {
+  margin-top: 32px;
+}
+.undated-events > h2 {
+  font-size: 18px;
+}
+.undated-events article {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--line);
+}
+.undated-events p {
+  margin: 8px 0;
+  font-size: 14px;
+}
+.subject-picker input[type="search"] {
+  margin-top: 0;
 }

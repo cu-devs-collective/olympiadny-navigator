@@ -41,7 +41,9 @@ def create_route_router(database: Database | None, settings: Settings) -> maxapi
     async def start(event: BotStarted) -> None:
         if event.bot is None:
             return
-        result = await reply(event.user.user_id, "/start")
+        result = await reply(
+            event.user.user_id, "/track" if event.payload == "navigator" else "/start"
+        )
         await event.bot.send_message(
             user_id=event.user.user_id, text=result.text, attachments=result.attachments(username)
         )

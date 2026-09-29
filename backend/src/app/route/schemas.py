@@ -60,6 +60,8 @@ class Benefit(BaseModel):
     confirmation: str
     explanation: str
     source: Source
+    diploma_validity_years: int | None = None
+    validity_source: Source | None = None
 
 
 class Event(BaseModel):
@@ -85,6 +87,10 @@ class Olympiad(BaseModel):
     benefits: list[Benefit]
     events: list[Event]
     level: str = "Уточняется для сезона 2026/27"
+    registry_level: Literal[1, 2, 3] | None = None
+    registry_season: str | None = None
+    registry_source: Source | None = None
+    aliases: list[str] = Field(default_factory=list)
 
 
 class Catalog(BaseModel):
@@ -103,7 +109,7 @@ class Profile(BaseModel):
     subjects: list[SubjectId] = Field(
         default_factory=lambda: ["math", "informatics"], min_length=1, max_length=12
     )
-    program_ids: list[str] = Field(default_factory=list, max_length=2)
+    program_ids: list[str] = Field(default_factory=list)
     timezone: str = "Europe/Moscow"
     notifications_enabled: bool = False
     quiet_start: int = Field(default=22, ge=0, le=23)

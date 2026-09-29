@@ -37,6 +37,11 @@ export type Benefit = {
      */
     explanation: string;
     source: Source;
+    /**
+     * Diploma Validity Years
+     */
+    diploma_validity_years?: number | null;
+    validity_source?: Source | null;
 };
 
 /**
@@ -336,6 +341,19 @@ export type Olympiad = {
      * Level
      */
     level?: string;
+    /**
+     * Registry Level
+     */
+    registry_level?: 1 | 2 | 3 | null;
+    /**
+     * Registry Season
+     */
+    registry_season?: string | null;
+    registry_source?: Source | null;
+    /**
+     * Aliases
+     */
+    aliases?: Array<string>;
 };
 
 /**

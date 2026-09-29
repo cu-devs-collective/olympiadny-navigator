@@ -103,6 +103,7 @@ function App() {
   const [onlyRelevant, setOnlyRelevant] = useState(false);
   const [detail, setDetail] = useState<Olympiad | null>(null);
   const [editing, setEditing] = useState(false);
+  const [removing, setRemoving] = useState<Olympiad | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -210,6 +211,7 @@ function App() {
       setTrack(
         (status ? await api.update(id, status) : await api.remove(id)).items,
       );
+      if (!status) setRemoving(null);
       setToast(status ? "Статус обновлён" : "Удалено из маршрута");
     });
   }
@@ -235,7 +237,12 @@ function App() {
     catalog?.olympiads.filter(
       (o) =>
         (subject === "all" || o.subject === subject) &&
-        `${o.name} ${o.profile}`.toLowerCase().includes(query.toLowerCase()) &&
+        `${o.name} ${o.profile} ${(o.aliases || []).join(" ")}`
+          .toLocaleLowerCase("ru")
+          .replaceAll("ё", "е")
+          .includes(
+            query.trim().toLocaleLowerCase("ru").replaceAll("ё", "е"),
+          ) &&
         (!onlyRelevant ||
           !me ||
           (o.grades.includes(me.profile.grade) &&
@@ -244,11 +251,16 @@ function App() {
   const tz = me?.profile.timezone || "Europe/Moscow";
   const events = entries
     .flatMap((o) => o.events.map((e) => ({ ...e, olympiad: o })))
+    .filter((e) => e.deadline || e.starts_at)
     .sort(
       (a, b) =>
         Date.parse(a.deadline || a.starts_at || "9999-01-01") -
         Date.parse(b.deadline || b.starts_at || "9999-01-01"),
     );
+  const undated = entries.filter(
+    (o) =>
+      !o.events.length || o.events.some((e) => !e.deadline && !e.starts_at),
+  );
   function reset() {
     setQuery("");
     setSubject("all");
@@ -285,12 +297,17 @@ function App() {
             {o.grades[0]}–{o.grades.at(-1)} классы
           </span>
         </div>
-        <div className="benefit-label">
-          <Icon name="book" size={16} />
-          {verified.length
-            ? `Есть льготы в правилах 2026 · ${verified.length}`
-            : "Льготы требуют проверки"}
-        </div>
+        {o.registry_level && (
+          <p className="registry-label">
+            РСОШ · {o.registry_level} уровень · {o.registry_season}
+          </p>
+        )}
+        {verified.length > 0 && (
+          <div className="benefit-label">
+            <Icon name="book" size={16} />
+            Льготы: {verified.length} · диплом действует 4 года
+          </div>
+        )}
         {inTrack && item && (
           <label className="track-status">
             Статус
@@ -317,7 +334,7 @@ function App() {
               className="icon-button"
               aria-label={`Удалить из маршрута: ${o.name}, ${o.profile}`}
               disabled={busy}
-              onClick={() => change(o.id)}
+              onClick={() => setRemoving(o)}
             >
               <Icon name="close" size={18} />
             </button>
@@ -594,7 +611,7 @@ function App() {
                       </p>
                     </div>
                   </div>
-                  {!events.length ? (
+                  {!events.length && !undated.length ? (
                     <div className="empty">
                       <h2>Пока нет событий</h2>
                       <p>
@@ -641,6 +658,34 @@ function App() {
                         );
                       })}
                     </div>
+                  )}
+                  {undated.length > 0 && (
+                    <section className="undated-events">
+                      <h2>Расписание без точных дат</h2>
+                      {undated.map((o) => (
+                        <article key={o.id}>
+                          <strong>
+                            {o.name} · {o.profile}
+                          </strong>
+                          <p className="muted">
+                            {o.kind === "vsosh"
+                              ? "Даты школьного и муниципального этапов устанавливают в регионе. Расписание сообщит школьный координатор."
+                              : o.events
+                                  .filter((e) => !e.deadline && !e.starts_at)
+                                  .map((e) => e.title)
+                                  .join(". ") ||
+                                "Расписание сезона 2026/27 ещё не добавлено."}
+                          </p>
+                          <button
+                            className="text-button"
+                            onClick={() => openSource(o.registration_url)}
+                          >
+                            Расписание организатора{" "}
+                            <Icon name="external" size={15} />
+                          </button>
+                        </article>
+                      ))}
+                    </section>
                   )}
                 </>
               )}
@@ -774,6 +819,36 @@ function App() {
           </div>
         </Dialog>
       )}
+      {removing && (
+        <Dialog
+          title="Убрать олимпиаду?"
+          close={() => setRemoving(null)}
+          error={error}
+        >
+          <p>
+            {removing.name} · {removing.profile}
+          </p>
+          <p className="muted">
+            Олимпиада исчезнет из навигатора. Напоминания по ней будут отменены.
+          </p>
+          <div className="dialog-actions">
+            <button
+              className="button secondary"
+              disabled={busy}
+              onClick={() => setRemoving(null)}
+            >
+              Оставить
+            </button>
+            <button
+              className="button danger"
+              disabled={busy}
+              onClick={() => change(removing.id)}
+            >
+              Убрать олимпиаду
+            </button>
+          </div>
+        </Dialog>
+      )}
       {detail && catalog && (
         <Dialog
           title={`${detail.name} · ${detail.profile}`}
@@ -788,6 +863,25 @@ function App() {
               .reverse()
               .join(".")}
           </p>
+          {detail.registry_level && (
+            <div className="registry-detail">
+              <strong>
+                РСОШ · {detail.registry_level} уровень ·{" "}
+                {detail.registry_season}
+              </strong>
+              <button
+                className="text-button"
+                onClick={() => openSource(detail.registry_source!.url)}
+              >
+                Перечень РСОШ <Icon name="external" size={15} />
+              </button>
+            </div>
+          )}
+          {detail.kind === "vsosh" && (
+            <p className="muted">
+              ВсОШ: четыре этапа. Уровни I–III РСОШ к ней не применяются.
+            </p>
+          )}
           <h3>Условия поступления</h3>
           {!benefits(detail).length && (
             <p className="muted">
@@ -811,16 +905,43 @@ function App() {
                     ? "БВИ · 2026"
                     : b.kind === "100"
                       ? "100 баллов · 2026"
-                      : "Нужна проверка"}
+                      : "Нет данных"}
                 </span>
               </div>
               <dl>
                 <dt>Диплом</dt>
                 <dd>{b.result}</dd>
+                {b.diploma_grades && b.diploma_grades.length > 0 && (
+                  <>
+                    <dt>Класс диплома</dt>
+                    <dd>{b.diploma_grades.join(", ")} класс</dd>
+                  </>
+                )}
+                {b.diploma_validity_years && (
+                  <>
+                    <dt>Срок действия</dt>
+                    <dd>
+                      {b.diploma_validity_years} года после года олимпиады
+                    </dd>
+                    <dt>Льгота на программу</dt>
+                    <dd>
+                      По правилам приёма {b.admission_year} года. Условия на год
+                      твоего поступления могут измениться.
+                    </dd>
+                  </>
+                )}
                 <dt>Подтверждение</dt>
                 <dd>{b.confirmation}</dd>
               </dl>
               <p className="muted">{b.explanation}</p>
+              {b.validity_source && (
+                <button
+                  className="text-button"
+                  onClick={() => openSource(b.validity_source!.url)}
+                >
+                  О сроке действия диплома <Icon name="external" size={15} />
+                </button>
+              )}
               <button
                 className="text-button"
                 onClick={() => openSource(b.source.url)}

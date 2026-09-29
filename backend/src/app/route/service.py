@@ -100,7 +100,7 @@ async def save_profile(db: AsyncSession, user_id: str, profile: Profile) -> Stud
         )
     known = {p.id for p in PROGRAMS}
     if not profile.program_ids or not set(profile.program_ids) <= known:
-        raise ApiError(422, "invalid_programs", "Выберите одну или две программы из каталога")
+        raise ApiError(422, "invalid_programs", "Выберите хотя бы одну программу из каталога")
     user = await lock_student(db, user_id)
     user.profile = profile.model_dump()
     await sync_reminders(db, user)

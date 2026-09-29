@@ -119,8 +119,38 @@ export function ProfileForm({
         </label>
       </div>
       <fieldset>
+        <legend>Интересующие предметы</legend>
+        <div className="subject-picker">
+          <input
+            type="search"
+            aria-label="Поиск предметов"
+            placeholder="Найти предмет"
+            value={subjectQuery}
+            onChange={(e) => setSubjectQuery(e.target.value)}
+          />
+          <div className="subject-options">
+            {catalog.subjects
+              .filter((s) =>
+                s.name
+                  .toLocaleLowerCase("ru")
+                  .includes(subjectQuery.toLocaleLowerCase("ru")),
+              )
+              .map((s) => (
+                <label key={s.id}>
+                  <input
+                    type="checkbox"
+                    checked={p.subjects.includes(s.id)}
+                    onChange={() => toggleSubject(s.id)}
+                  />
+                  {s.name}
+                </label>
+              ))}
+          </div>
+        </div>
+      </fieldset>
+      <fieldset>
         <legend>Куда хочешь поступить?</legend>
-        <p className="muted">Выбрано {p.program_ids.length} из 2 программ</p>
+        <p className="muted">Выбрано программ: {p.program_ids.length}</p>
         {selected.length > 0 && (
           <div className="selected-programs" aria-label="Выбранные программы">
             {selected.map((program) => (
@@ -227,10 +257,6 @@ export function ProfileForm({
                 type="checkbox"
                 aria-label={`${program.university}, ${program.name}`}
                 checked={p.program_ids.includes(program.id)}
-                disabled={
-                  !p.program_ids.includes(program.id) &&
-                  p.program_ids.length >= 2
-                }
                 onChange={() => toggleProgram(program.id)}
               />
               <span>
@@ -271,55 +297,6 @@ export function ProfileForm({
             </button>
           </div>
         )}
-      </fieldset>
-      <fieldset>
-        <legend>Интересующие предметы</legend>
-        <div className="selected-subjects">
-          {catalog.subjects
-            .filter((s) => p.subjects.includes(s.id))
-            .map((s) => (
-              <button
-                type="button"
-                className="selection-chip"
-                key={s.id}
-                onClick={() => toggleSubject(s.id)}
-                aria-label={`Убрать предмет: ${s.name}`}
-              >
-                {s.name}
-                <Icon name="close" size={14} />
-              </button>
-            ))}
-        </div>
-        <details className="subject-picker">
-          <summary>
-            Выбрать предметы <span>{p.subjects.length} выбрано</span>
-          </summary>
-          <input
-            type="search"
-            aria-label="Поиск предметов"
-            placeholder="Найти предмет"
-            value={subjectQuery}
-            onChange={(e) => setSubjectQuery(e.target.value)}
-          />
-          <div className="subject-options">
-            {catalog.subjects
-              .filter((s) =>
-                s.name
-                  .toLocaleLowerCase("ru")
-                  .includes(subjectQuery.toLocaleLowerCase("ru")),
-              )
-              .map((s) => (
-                <label key={s.id}>
-                  <input
-                    type="checkbox"
-                    checked={p.subjects.includes(s.id)}
-                    onChange={() => toggleSubject(s.id)}
-                  />
-                  {s.name}
-                </label>
-              ))}
-          </div>
-        </details>
       </fieldset>
       <button
         className="button primary"

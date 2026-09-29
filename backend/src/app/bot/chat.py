@@ -112,7 +112,7 @@ def profile_reply(profile: Profile) -> Reply:
     return Reply(
         f"Ваш профиль\n{profile.grade} класс → поступление в {profile.admission_year}\n"
         f"Цели: {', '.join(goals) or 'не выбраны'}\n\n"
-        "Выберите класс и до двух программ. Год рассчитывается по окончанию 11 класса.\n\n"
+        "Выберите класс и интересующие программы. Год рассчитывается по окончанию 11 класса.\n\n"
         + "\n".join(f"{p.university} · {p.short_name}: {p.name}" for p in PROGRAMS),
         rows,
     )
@@ -170,13 +170,8 @@ async def respond(db: AsyncSession, user: Student, raw: str, demo_enabled: bool)
             goals = list(profile.program_ids)
             if argument in goals:
                 goals.remove(argument)
-            elif len(goals) < 2:
-                goals.append(argument)
             else:
-                return Reply(
-                    "Можно выбрать две цели. Сначала снимите одну из выбранных.",
-                    [[button("Выбрать цели", "profile")]],
-                )
+                goals.append(argument)
             profile.program_ids = goals
         user.profile = profile.model_dump()
         await sync_reminders(db, user)
@@ -232,11 +227,12 @@ async def respond(db: AsyncSession, user: Student, raw: str, demo_enabled: bool)
             values["timezone"] = argument
         await save_profile(db, user.id, Profile(**values))
         return await respond(db, user, "settings", demo_enabled)
-    if command == "catalog" or (
+    if command in {"catalog", "catalog-page"} or (
         not text.startswith("/")
         and command
         not in {
             "track",
+            "track-page",
             "deadlines",
             "show",
             "add",
@@ -247,16 +243,35 @@ async def respond(db: AsyncSession, user: Student, raw: str, demo_enabled: bool)
             "demo",
         }
     ):
-        query = argument if command == "catalog" else text
-        query = query.casefold()
-        matches = [o for o in OLYMPIADS if query in f"{o.name} {o.profile}".casefold()]
+        page = 0
+        if command == "catalog-page":
+            number, _, query = argument.partition(" ")
+            page = int(number) if number.isdigit() else 0
+        else:
+            query = argument if command == "catalog" else text
+        query = query.casefold().replace("ё", "е")
+        matches = [
+            o
+            for o in OLYMPIADS
+            if query in f"{o.name} {o.profile} {' '.join(o.aliases)}".casefold().replace("ё", "е")
+        ]
         if not matches:
             return Reply("Не нашёл такую олимпиаду. Попробуйте «математика» или «Физтех».", menu())
+        page = min(page, (len(matches) - 1) // 12)
+        rows = [[button(title(o), f"show {o.id}")] for o in matches[page * 12 : (page + 1) * 12]]
+        navigation = []
+        if page:
+            navigation.append(button("Назад", f"catalog-page {page - 1} {query}"))
+        if (page + 1) * 12 < len(matches):
+            navigation.append(button("Далее", f"catalog-page {page + 1} {query}"))
+        if navigation:
+            rows.append(navigation)
         return Reply(
-            "Олимпиады · выберите, чтобы посмотреть сроки и условия льгот.",
-            [[button(title(o), f"show {o.id}")] for o in matches],
+            f"Олимпиады: {len(matches)} · страница {page + 1}/{(len(matches) + 11) // 12}. "
+            "Выберите, чтобы посмотреть сроки и условия льгот.",
+            rows,
         )
-    if command == "track":
+    if command in {"track", "track-page"}:
         route = await list_track(db, user.id)
         if not route.items:
             return Reply(
@@ -264,10 +279,19 @@ async def respond(db: AsyncSession, user: Student, raw: str, demo_enabled: bool)
             )
         lines = ["Ваш навигатор"]
         rows: list[list[Button]] = []
-        for entry in route.items:
+        page = int(argument) if command == "track-page" and argument.isdigit() else 0
+        page = min(page, (len(route.items) - 1) // 12)
+        for entry in route.items[page * 12 : (page + 1) * 12]:
             o = get_olympiad(entry.olympiad_id)
             lines.append(f"• {o.name} · {o.profile} — {STATES[entry.status]}")
             rows.append([button(title(o), f"show {o.id}")])
+        navigation = []
+        if page:
+            navigation.append(button("Назад", f"track-page {page - 1}"))
+        if (page + 1) * 12 < len(route.items):
+            navigation.append(button("Далее", f"track-page {page + 1}"))
+        if navigation:
+            rows.append(navigation)
         return Reply("\n".join(lines), rows)
     if command == "deadlines":
         route = await list_track(db, user.id)
@@ -333,6 +357,11 @@ async def respond(db: AsyncSession, user: Student, raw: str, demo_enabled: bool)
         lines = [
             f"{o.name} · {o.profile}",
             o.description,
+            (
+                f"РСОШ · {o.registry_level} уровень · {o.registry_season}"
+                if o.registry_level
+                else "ВсОШ · уровни I-III РСОШ не применяются"
+            ),
             f"\n{STATES[entry.status] if entry else 'Не добавлена в маршрут'}",
             "\nСроки (Москва):",
         ]
@@ -343,7 +372,7 @@ async def respond(db: AsyncSession, user: Student, raw: str, demo_enabled: bool)
                 if stamp
                 else "дата уточняется"
             )
-            lines.append(f"• {e.title}: {day}")
+            lines.append(f"• {e.title}: {day}" if stamp else f"• {e.title}. {e.source.note}")
         lines.append(
             "\nПриём 2026 — ориентир. "
             f"Для поступления в {profile.admission_year} нужна новая проверка."
@@ -357,6 +386,13 @@ async def respond(db: AsyncSession, user: Student, raw: str, demo_enabled: bool)
                 f"\n{p.university} · {p.short_name}: {label}\n{b.result}\n"
                 f"{b.confirmation}\n{b.source.url}"
             )
+            if b.diploma_validity_years:
+                lines.append(
+                    f"Срок действия диплома: {b.diploma_validity_years} года после года олимпиады. "
+                    "БВИ зависит от правил программы в год поступления."
+                )
+        if o.registry_source:
+            lines.append(f"\nПеречень РСОШ: {o.registry_source.url}")
         lines.append(f"\nИсточник расписания: {o.source.url}\n{o.source.note}")
         rows = [[LinkButton(text="Сайт организатора", url=o.registration_url)]]
         if entry:
