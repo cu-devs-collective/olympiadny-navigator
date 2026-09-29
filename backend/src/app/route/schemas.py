@@ -5,6 +5,27 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
+SubjectId = Literal[
+    "math",
+    "informatics",
+    "physics",
+    "chemistry",
+    "biology",
+    "history",
+    "social",
+    "russian",
+    "literature",
+    "english",
+    "geography",
+    "economics",
+]
+
+
+class Subject(BaseModel):
+    id: SubjectId
+    name: str
+
+
 def admission_year_for_grade(grade: int, today: datetime | None = None) -> int:
     today = today or datetime.now(ZoneInfo("Europe/Moscow"))
     # The school year begins in September. During summer use the completed grade.
@@ -26,6 +47,7 @@ class Program(BaseModel):
     university: str = "НИУ ВШЭ"
     campus: str = "Москва"
     description: str
+    direction: str = "01.03.02 Прикладная математика и информатика"
     url: str = "https://ba.hse.ru/"
 
 
@@ -53,7 +75,7 @@ class Olympiad(BaseModel):
     id: str
     name: str
     profile: str
-    subject: Literal["math", "informatics"]
+    subject: SubjectId
     kind: Literal["vsosh", "listed"]
     season: str = "2026/27"
     grades: list[int]
@@ -67,9 +89,10 @@ class Olympiad(BaseModel):
 
 class Catalog(BaseModel):
     programs: list[Program]
+    subjects: list[Subject]
     olympiads: list[Olympiad]
     snapshot_date: str = "2026-09-30"
-    notice: str = "Правила приёма 2026 года — ориентир. Условия вашего года нужно проверить заново."
+    notice: str = "Данные актуальны на 30.09.2026"
     demo_enabled: bool
     bot_url: str | None = None
 
@@ -77,8 +100,8 @@ class Catalog(BaseModel):
 class Profile(BaseModel):
     grade: int = Field(default=10, ge=9, le=11)
     admission_year: int = Field(default=2028, ge=2026, le=2035)
-    subjects: list[Literal["math", "informatics"]] = Field(
-        default_factory=lambda: ["math", "informatics"], min_length=1, max_length=2
+    subjects: list[SubjectId] = Field(
+        default_factory=lambda: ["math", "informatics"], min_length=1, max_length=12
     )
     program_ids: list[str] = Field(default_factory=list, max_length=2)
     timezone: str = "Europe/Moscow"
@@ -168,3 +191,7 @@ class NotificationAction(BaseModel):
 
 class Ok(BaseModel):
     ok: bool = True
+
+
+class ConsentRequest(BaseModel):
+    accepted: Literal[True]

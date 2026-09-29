@@ -505,8 +505,9 @@ def test_chat_onboarding_and_actions_without_miniapp(client, settings):
             await handlers[UpdateType.MESSAGE_CREATED](event)
             return answer.call_args.kwargs["text"]
 
-        assert "Маршрут" in await send("/start")
-        assert "согласием" in await send("/resume")
+        assert "навигатор" in await send("/start")
+        assert "Принимаю" in await send("/resume")
+        await send("/accept")
         assert "9 класс" in await send("/grade 9")
         await send("/goal hse-pmi")
         assert "сохранён" in await send("/save")
@@ -515,6 +516,7 @@ def test_chat_onboarding_and_actions_without_miniapp(client, settings):
         assert "Физтех" in await send("/track")
         assert "не проверено" in await send("/show fiztech-math")
         assert "Регистрация отмечена" in await send("/registered fiztech-math")
+        await send("/accept", user_id=778)
         assert "пуст" in await send("/track", user_id=778)
         assert "Удалить" in await send("/remove fiztech-math")
         assert "Физтех" in await send("/track")  # confirmation required
@@ -618,3 +620,44 @@ def test_miniapp_profile_edit_preserves_chat_notification_settings(client):
     assert saved["notifications_enabled"] is True
     assert saved["quiet_start"] == 0
     assert saved["quiet_end"] == 0
+
+
+def test_consent_is_independent_of_programs_and_start_resets_it(client, settings):
+    from app.bot.chat import respond
+    from app.db.models.route import Student
+
+    headers = login(client, 987)
+    assert (
+        client.post("/api/v1/me/consent", headers=headers, json={"accepted": False}).status_code
+        == 422
+    )
+    result = client.post("/api/v1/me/consent", headers=headers, json={"accepted": True})
+    assert result.status_code == 200
+    assert result.json()["profile"]["consent"] is True
+    assert result.json()["profile"]["program_ids"] == []
+
+    async def restart():
+        database = Database(settings.database)
+        async with database.session_factory() as db:
+            user = await db.get(Student, "max:987")
+            assert user is not None
+            reply = await respond(db, user, "/start", True)
+            assert "Принимаю" in reply.text
+        await database.close()
+
+    asyncio.run(restart())
+    assert client.get("/api/v1/me", headers=headers).json()["profile"]["consent"] is False
+
+
+def test_extended_subjects_are_saved_and_supported_by_catalog(client):
+    headers = login(client)
+    profile = setup_profile(client, headers)
+    catalog = client.get("/api/v1/catalog").json()
+    profile["subjects"] = [s["id"] for s in catalog["subjects"]]
+    assert len(profile["subjects"]) == 12
+    response = client.put("/api/v1/me", headers=headers, json=profile)
+    assert response.status_code == 200
+    assert set(response.json()["profile"]["subjects"]) == {
+        o["subject"] for o in catalog["olympiads"]
+    }
+    assert client.put("/api/v1/track/vsosh-chemistry", headers=headers).status_code == 200

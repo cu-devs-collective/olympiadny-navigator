@@ -1,46 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { FormEvent, ReactNode } from "react";
-import { api, ApiError, openSource, session } from "./route-api";
+import type { ReactNode } from "react";
+import { api, ApiError, openSource, openChat, session } from "./route-api";
 import type { Catalog, Me, Olympiad, Profile, TrackEntry } from "./route-api";
 import { Icon } from "./icons";
 import "./App.css";
+import { ProfileForm } from "./ProfileForm";
 
 type Tab = "discover" | "track" | "calendar" | "profile";
 const tabs: { id: Tab; label: string; icon: string }[] = [
   { id: "discover", label: "Олимпиады", icon: "grid" },
-  { id: "track", label: "Мой маршрут", icon: "route" },
+  { id: "track", label: "Мой навигатор", icon: "route" },
   { id: "calendar", label: "Календарь", icon: "calendar" },
   { id: "profile", label: "Мой профиль", icon: "user" },
 ];
-const subjects = { math: "Математика", informatics: "Информатика" };
 const statuses = {
   planned: "В плане",
   registered: "Регистрация отмечена",
   completed: "Участие завершено",
 };
-const zones = [
-  "Europe/Kaliningrad",
-  "Europe/Moscow",
-  "Europe/Samara",
-  "Asia/Yekaterinburg",
-  "Asia/Omsk",
-  "Asia/Krasnoyarsk",
-  "Asia/Irkutsk",
-  "Asia/Yakutsk",
-  "Asia/Vladivostok",
-  "Asia/Magadan",
-  "Asia/Kamchatka",
-];
-function graduationYear(grade: number) {
-  const parts = new Intl.DateTimeFormat("en", {
-    timeZone: "Europe/Moscow",
-    year: "numeric",
-    month: "numeric",
-  }).formatToParts(new Date());
-  const year = Number(parts.find((p) => p.type === "year")!.value);
-  const month = Number(parts.find((p) => p.type === "month")!.value);
-  return year + (month >= 9 ? 1 : 0) + 11 - grade;
-}
 const date = (value: string, timezone = "Europe/Moscow") =>
   new Intl.DateTimeFormat("ru-RU", {
     day: "numeric",
@@ -72,11 +49,13 @@ function Dialog({
   close,
   children,
   error,
+  closable = true,
 }: {
   title: string;
   close: () => void;
   children: ReactNode;
   error?: string;
+  closable?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -89,16 +68,21 @@ function Dialog({
       ref={ref}
       className="dialog"
       aria-label={title}
-      onCancel={close}
+      onCancel={(e) => {
+        if (closable) close();
+        else e.preventDefault();
+      }}
       onClick={(e) => {
-        if (e.target === e.currentTarget) close();
+        if (closable && e.target === e.currentTarget) close();
       }}
     >
       <div className="dialog-head">
         <h2>{title}</h2>
-        <button className="icon-button" aria-label="Закрыть" onClick={close}>
-          <Icon name="close" />
-        </button>
+        {closable && (
+          <button className="icon-button" aria-label="Закрыть" onClick={close}>
+            <Icon name="close" />
+          </button>
+        )}
       </div>
       {error && (
         <p className="error-banner" role="alert">
@@ -107,153 +91,6 @@ function Dialog({
       )}
       {children}
     </dialog>
-  );
-}
-function ProfileForm({
-  initial,
-  catalog,
-  save,
-  busy,
-}: {
-  initial: Profile;
-  catalog: Catalog;
-  save: (p: Profile) => void;
-  busy: boolean;
-}) {
-  const [p, setP] = useState({
-    ...initial,
-    admission_year: graduationYear(initial.grade),
-  });
-  function submit(e: FormEvent) {
-    e.preventDefault();
-    save({ ...p, admission_year: graduationYear(p.grade) });
-  }
-  return (
-    <form className="profile-form" onSubmit={submit}>
-      <div className="form-grid">
-        <label>
-          Сейчас учусь в
-          <select
-            value={p.grade}
-            onChange={(e) =>
-              setP({
-                ...p,
-                grade: +e.target.value,
-                admission_year: graduationYear(+e.target.value),
-              })
-            }
-          >
-            {[9, 10, 11].map((g) => (
-              <option key={g} value={g}>
-                {g} классе
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Год поступления
-          <input
-            aria-label="Год поступления"
-            value={p.admission_year}
-            readOnly
-          />
-          <small>После окончания 11 класса</small>
-        </label>
-      </div>
-      <fieldset>
-        <legend>Куда хочешь поступить?</legend>
-        <p className="muted">Выбери одну или две программы.</p>
-        <div className="program-options">
-          {catalog.programs.map((program) => (
-            <label
-              key={program.id}
-              className={`program-option ${p.program_ids.includes(program.id) ? "selected" : ""}`}
-            >
-              <input
-                type="checkbox"
-                checked={p.program_ids.includes(program.id)}
-                disabled={
-                  !p.program_ids.includes(program.id) &&
-                  p.program_ids.length >= 2
-                }
-                onChange={() =>
-                  setP({
-                    ...p,
-                    program_ids: p.program_ids.includes(program.id)
-                      ? p.program_ids.filter((id) => id !== program.id)
-                      : [...p.program_ids, program.id],
-                  })
-                }
-              />
-              <span>
-                <small>
-                  {program.university} · {program.campus}
-                </small>
-                <strong>{program.name}</strong>
-                <small>{program.description}</small>
-              </span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
-      <fieldset>
-        <legend>Интересующие предметы</legend>
-        <div className="subject-options">
-          {(["math", "informatics"] as const).map((s) => (
-            <label key={s}>
-              <input
-                type="checkbox"
-                checked={p.subjects.includes(s)}
-                onChange={() =>
-                  setP({
-                    ...p,
-                    subjects: p.subjects.includes(s)
-                      ? p.subjects.filter((v) => v !== s)
-                      : [...p.subjects, s],
-                  })
-                }
-              />
-              {subjects[s]}
-            </label>
-          ))}
-        </div>
-      </fieldset>
-      <label>
-        Часовой пояс
-        <select
-          value={p.timezone}
-          onChange={(e) => setP({ ...p, timezone: e.target.value })}
-        >
-          {zones.map((z) => (
-            <option key={z}>{z}</option>
-          ))}
-        </select>
-      </label>
-      <p className="inline-note">
-        Сроки и действия приходят в чат MAX. Включить сообщения и настроить
-        тихие часы можно командой /settings.
-      </p>
-      <label className="consent">
-        <input
-          type="checkbox"
-          checked={p.consent}
-          onChange={(e) => setP({ ...p, consent: e.target.checked })}
-        />
-        <span>
-          Разрешаю сохранять класс, цели, настройки и отметки для работы
-          маршрута. При входе через MAX — также его идентификатор. Профиль можно
-          удалить вместе с историей.
-        </span>
-      </label>
-      <button
-        className="button primary"
-        disabled={
-          busy || !p.consent || !p.program_ids.length || !p.subjects.length
-        }
-      >
-        {busy ? "Сохраняем…" : "Сохранить мой маршрут"}
-      </button>
-    </form>
   );
 }
 function App() {
@@ -343,7 +180,7 @@ function App() {
   }
   async function login() {
     if (!window.WebApp?.initData && !catalog?.demo_enabled) {
-      if (catalog?.bot_url) openSource(catalog.bot_url);
+      if (catalog?.bot_url) openChat(catalog.bot_url);
       return;
     }
     await run(async () => {
@@ -425,7 +262,13 @@ function App() {
       <article className="olympiad-card" key={o.id}>
         <div className="card-top">
           <span className={`subject-mark ${o.subject}`}>
-            {o.subject === "math" ? "∑" : "{ }"}
+            {o.subject === "math"
+              ? "∑"
+              : o.subject === "informatics"
+                ? "{ }"
+                : catalog?.subjects
+                    .find((s) => s.id === o.subject)
+                    ?.name.slice(0, 2)}
           </span>
           <span className={`status ${state.open ? "open" : ""}`}>
             {state.label}
@@ -500,12 +343,16 @@ function App() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <a className="brand" href="/" aria-label="Маршрут — главная">
+        <a
+          className="brand"
+          href="/"
+          aria-label="Олимпиадный навигатор — главная"
+        >
           <span className="brand-mark">
             <Icon name="route" size={23} />
           </span>
           <span>
-            Маршрут<small>Олимпиады и поступление</small>
+            Олимпиадный<small className="brand-name">навигатор</small>
           </span>
         </a>
         <div className="topbar-right">
@@ -513,7 +360,7 @@ function App() {
           {catalog?.bot_url && (
             <button
               className="button secondary chat-button"
-              onClick={() => openSource(catalog.bot_url!)}
+              onClick={() => openChat(catalog.bot_url!)}
             >
               Открыть чат <Icon name="external" size={16} />
             </button>
@@ -611,7 +458,7 @@ function App() {
                         onClick={() => void login()}
                       >
                         {catalog.demo_enabled
-                          ? "Собрать маршрут"
+                          ? "Настроить навигатор"
                           : "Войти через MAX"}
                         <Icon name="plus" size={18} />
                       </button>
@@ -633,7 +480,7 @@ function App() {
                       <strong>{catalog.programs.length}</strong> программы вузов
                     </span>
                     <span>
-                      Источники проверены{" "}
+                      Данные актуальны на{" "}
                       {(catalog.snapshot_date || "2026-09-30")
                         .split("-")
                         .reverse()
@@ -650,21 +497,18 @@ function App() {
                         onChange={(e) => setQuery(e.target.value)}
                       />
                     </label>
-                    <div className="segments">
-                      {[
-                        ["all", "Все"],
-                        ["math", "Математика"],
-                        ["informatics", "Информатика"],
-                      ].map(([v, l]) => (
-                        <button
-                          key={v}
-                          aria-pressed={subject === v}
-                          onClick={() => setSubject(v)}
-                        >
-                          {l}
-                        </button>
+                    <select
+                      aria-label="Предмет олимпиады"
+                      value={subject}
+                      onChange={(e) => setSubject(e.target.value)}
+                    >
+                      <option value="all">Все предметы</option>
+                      {catalog.subjects.map((s) => (
+                        <option value={s.id} key={s.id}>
+                          {s.name}
+                        </option>
                       ))}
-                    </div>
+                    </select>
                   </div>
                   <div className="result-line">
                     <span>Найдено: {visible.length}</span>
@@ -690,11 +534,6 @@ function App() {
                       </button>
                     </div>
                   )}
-                  <p className="catalog-footnote">
-                    <Icon name="info" size={17} />
-                    {catalog.notice} Каталог обновляется вручную; окончательные
-                    сроки — на сайте организатора.
-                  </p>
                 </>
               )}
               {tab === "track" && (
@@ -702,7 +541,7 @@ function App() {
                   <div className="page-heading">
                     <div>
                       <span className="label">ЛИЧНЫЙ ПЛАН</span>
-                      <h1>Мой маршрут</h1>
+                      <h1>Мой навигатор</h1>
                       <p>
                         {selected
                           .map((p) => `${p.university} · ${p.short_name}`)
@@ -816,7 +655,7 @@ function App() {
                       </p>
                     </div>
                   </div>
-                  {me ? (
+                  {me?.profile.consent ? (
                     <>
                       <div className="profile-panel">
                         <ProfileForm
@@ -841,7 +680,7 @@ function App() {
                         className="button primary"
                         onClick={() => void login()}
                       >
-                        Собрать маршрут
+                        Настроить навигатор
                       </button>
                     </div>
                   )}
@@ -849,9 +688,6 @@ function App() {
               )}
             </>
           )}
-          <footer>
-            Маршрут <span>Олимпиадный навигатор в MAX</span>
-          </footer>
         </main>
       </div>
       {toast && (
@@ -860,9 +696,36 @@ function App() {
           {toast}
         </div>
       )}
-      {editing && me && catalog && (
+      {me && !me.profile.consent && (
         <Dialog
-          title="Настроим твой маршрут"
+          title="Добро пожаловать"
+          close={() => {}}
+          closable={false}
+          error={error}
+        >
+          <p>
+            Для работы навигатора сохраняем класс, цели, настройки и отметки. В
+            MAX — также идентификатор аккаунта. Удалить профиль и данные можно в
+            приложении.
+          </p>
+          <div className="dialog-actions">
+            <button
+              className="button primary"
+              disabled={busy}
+              onClick={() =>
+                void run(async () => {
+                  setMe(await api.acceptConsent());
+                })
+              }
+            >
+              Принимаю
+            </button>
+          </div>
+        </Dialog>
+      )}
+      {editing && me?.profile.consent && catalog && (
+        <Dialog
+          title="Настройка навигатора"
           close={() => setEditing(false)}
           error={error}
         >
@@ -918,13 +781,19 @@ function App() {
           error={error}
         >
           <p>{detail.description}</p>
-          <p className="inline-note">
-            Условия ниже относятся к приёму 2026 года. Они не подтверждают
-            льготу при поступлении в{" "}
-            {me?.profile.admission_year || graduationYear(11)} году. БВИ и 100
-            баллов — разные льготы.
+          <p className="data-date">
+            Данные актуальны на{" "}
+            {(catalog.snapshot_date || "2026-09-30")
+              .split("-")
+              .reverse()
+              .join(".")}
           </p>
           <h3>Условия поступления</h3>
+          {!benefits(detail).length && (
+            <p className="muted">
+              Для выбранных программ условия пока не добавлены.
+            </p>
+          )}
           {benefits(detail).map((b) => (
             <section className="benefit-detail" key={b.program_id}>
               <div className="benefit-head">

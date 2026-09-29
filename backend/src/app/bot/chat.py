@@ -35,9 +35,9 @@ from app.route.service import (
 Button = InlineButtonUnion
 STATES = {"planned": "В плане", "registered": "Регистрация отмечена", "completed": "Завершено"}
 HELP = (
-    "Маршрут — олимпиады и поступление\n\n"
+    "Олимпиадный навигатор\n\n"
     "Здесь можно собрать маршрут целиком, проверить сроки и отметить регистрацию.\n\n"
-    "/profile — класс, цели и согласие\n"
+    "/profile — класс и цели\n"
     "/catalog — олимпиады; можно написать «Физтех» или «математика»\n"
     "/track — мой маршрут и действия\n"
     "/deadlines — ближайшие сроки\n"
@@ -78,7 +78,7 @@ class Reply:
 
 def menu() -> list[list[Button]]:
     return [
-        [button("Мой маршрут", "track"), button("Ближайшие сроки", "deadlines")],
+        [button("Мой навигатор", "track"), button("Ближайшие сроки", "deadlines")],
         [button("Найти олимпиаду", "catalog"), button("Мой профиль", "profile")],
         [button("Настройки сообщений", "settings")],
     ]
@@ -108,17 +108,23 @@ def profile_reply(profile: Profile) -> Reply:
             for p in PROGRAMS
         ]
     )
-    rows.append([button("Согласен, сохранить профиль", "save")])
+    rows.append([button("Сохранить профиль", "save")])
     return Reply(
         f"Ваш профиль\n{profile.grade} класс → поступление в {profile.admission_year}\n"
         f"Цели: {', '.join(goals) or 'не выбраны'}\n\n"
         "Выберите класс и до двух программ. Год рассчитывается по окончанию 11 класса.\n\n"
-        + "\n".join(f"{p.university} · {p.short_name}: {p.name}" for p in PROGRAMS)
-        + "\n\n"
-        "Нажимая «Согласен, сохранить профиль», разрешаете хранить MAX ID, класс, цели, "
-        "настройки и отметки для работы маршрута. Удалить профиль можно в мини-приложении. "
-        "Напоминания включаются отдельно в /settings.",
+        + "\n".join(f"{p.university} · {p.short_name}: {p.name}" for p in PROGRAMS),
         rows,
+    )
+
+
+def consent_reply() -> Reply:
+    return Reply(
+        "Олимпиадный навигатор\n\n"
+        "Для работы сохраняем MAX ID, класс, цели, настройки и отметки. "
+        "Профиль и данные можно удалить в приложении.\n"
+        "Нажмите «Принимаю», чтобы продолжить.",
+        [[button("Принимаю", "accept")]],
     )
 
 
@@ -135,7 +141,19 @@ async def respond(db: AsyncSession, user: Student, raw: str, demo_enabled: bool)
     }.get(command, command)
     argument = argument.strip()
     profile = Profile(**user.profile)
-    if command in {"start", "help", "menu", "меню"}:
+    if command == "start":
+        user = await lock_student(db, user.id)
+        user.profile = {**user.profile, "consent": False}
+        await db.commit()
+        return consent_reply()
+    if command == "accept":
+        user = await lock_student(db, user.id)
+        user.profile = {**user.profile, "consent": True}
+        await db.commit()
+        return Reply(HELP, menu())
+    if not profile.consent and command != "stop":
+        return consent_reply()
+    if command in {"help", "menu", "меню"}:
         return Reply(HELP, menu())
     if command in {"profile", "setup"}:
         return profile_reply(profile)
@@ -166,7 +184,7 @@ async def respond(db: AsyncSession, user: Student, raw: str, demo_enabled: bool)
         return profile_reply(profile)
     if command == "save":
         user = await lock_student(db, user.id)
-        profile = Profile(**{**user.profile, "consent": True})
+        profile = Profile(**user.profile)
         await save_profile(db, user.id, profile)
         return Reply(
             f"Профиль сохранён. Поступление в {profile.admission_year}.\n"
@@ -179,7 +197,7 @@ async def respond(db: AsyncSession, user: Student, raw: str, demo_enabled: bool)
             f"Тихие часы: {profile.quiet_start:02}:00-{profile.quiet_end:02}:00 "
             f"({profile.timezone}).\n\n"
             "Изменить часы: /quiet 22 8. Без тихих часов: /quiet 0 0.\n"
-            "Часовой пояс: /timezone Asia/Yekaterinburg (также доступен в профиле приложения).\n"
+            "Часовой пояс: /timezone Asia/Yekaterinburg.\n"
             "Напоминаем за 7 дней и за сутки до проверенного срока. "
             "Нет точной даты — нет рассылки.",
             [
@@ -244,7 +262,7 @@ async def respond(db: AsyncSession, user: Student, raw: str, demo_enabled: bool)
             return Reply(
                 "Маршрут пока пуст. Настройте профиль и выберите первую олимпиаду.", menu()
             )
-        lines = ["Ваш маршрут"]
+        lines = ["Ваш навигатор"]
         rows: list[list[Button]] = []
         for entry in route.items:
             o = get_olympiad(entry.olympiad_id)
@@ -279,7 +297,7 @@ async def respond(db: AsyncSession, user: Student, raw: str, demo_enabled: bool)
                 "Даты без точного времени смотрите в карточках олимпиад."
             )
         lines.append(f"\nЧасовой пояс: {profile.timezone}. Сверяйте изменения с организатором.")
-        return Reply("\n".join(lines), [[button("Мой маршрут", "track")]])
+        return Reply("\n".join(lines), [[button("Мой навигатор", "track")]])
     if command in {"show", "add", "registered", "done", "remove", "confirm-remove", "demo"}:
         o = get_olympiad(argument)
         if command == "add":

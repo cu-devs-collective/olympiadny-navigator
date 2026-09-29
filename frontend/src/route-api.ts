@@ -24,6 +24,7 @@ declare global {
     WebApp?: {
       initData?: string;
       ready?: () => void;
+      close?: () => void;
       openLink?: (url: string) => void;
       openMaxLink?: (url: string) => void;
     };
@@ -87,6 +88,7 @@ export const api = {
       initData ? { init_data: initData } : undefined,
     ),
   me: () => request<Me>("/me"),
+  acceptConsent: () => request<Me>("/me/consent", "POST", { accepted: true }),
   save: (profile: Profile) =>
     request<Me>("/me", "PUT", {
       grade: profile.grade,
@@ -113,4 +115,17 @@ export function openSource(url: string) {
   if (window.WebApp?.initData && window.WebApp.openLink)
     window.WebApp.openLink(url);
   else window.open(url, "_blank", "noopener,noreferrer");
+}
+
+// MAX's openMaxLink is for mini-app links; returning to this bot uses WebApp.close.
+export function openChat(url: string) {
+  if (window.WebApp?.initData && window.WebApp.close) {
+    try {
+      window.WebApp.close();
+      return;
+    } catch {
+      /* Use the regular link fallback. */
+    }
+  }
+  window.location.assign(url);
 }

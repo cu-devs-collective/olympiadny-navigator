@@ -4,8 +4,8 @@ import * as z from 'zod';
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { ActOnNotificationData, ActOnNotificationErrors, ActOnNotificationResponses, AddToTrackData, AddToTrackErrors, AddToTrackResponses, CreateDemoEventData, CreateDemoEventErrors, CreateDemoEventResponses, DeleteProfileData, DeleteProfileResponses, GetCatalogData, GetCatalogResponses, GetLivenessData, GetLivenessResponses, GetMeData, GetMeResponses, GetNotificationsData, GetNotificationsResponses, GetReadinessData, GetReadinessErrors, GetReadinessResponses, GetTrackData, GetTrackResponses, LoginDemoData, LoginDemoResponses, LoginMaxData, LoginMaxErrors, LoginMaxResponses, RemoveFromTrackData, RemoveFromTrackErrors, RemoveFromTrackResponses, SaveProfileData, SaveProfileErrors, SaveProfileResponses, UpdateTrackData, UpdateTrackErrors, UpdateTrackResponses } from './types.gen';
-import { zActOnNotificationBody, zActOnNotificationPath, zActOnNotificationResponse, zAddToTrackPath, zAddToTrackResponse, zCreateDemoEventBody, zCreateDemoEventResponse, zDeleteProfileResponse, zGetCatalogResponse, zGetLivenessResponse, zGetMeResponse, zGetNotificationsResponse, zGetReadinessResponse, zGetTrackResponse, zLoginDemoResponse, zLoginMaxBody, zLoginMaxResponse, zRemoveFromTrackPath, zRemoveFromTrackResponse, zSaveProfileBody, zSaveProfileResponse, zUpdateTrackBody, zUpdateTrackPath, zUpdateTrackResponse } from './zod.gen';
+import type { AcceptConsentData, AcceptConsentErrors, AcceptConsentResponses, ActOnNotificationData, ActOnNotificationErrors, ActOnNotificationResponses, AddToTrackData, AddToTrackErrors, AddToTrackResponses, CreateDemoEventData, CreateDemoEventErrors, CreateDemoEventResponses, DeleteProfileData, DeleteProfileResponses, GetCatalogData, GetCatalogResponses, GetLivenessData, GetLivenessResponses, GetMeData, GetMeResponses, GetNotificationsData, GetNotificationsResponses, GetReadinessData, GetReadinessErrors, GetReadinessResponses, GetTrackData, GetTrackResponses, LoginDemoData, LoginDemoResponses, LoginMaxData, LoginMaxErrors, LoginMaxResponses, RemoveFromTrackData, RemoveFromTrackErrors, RemoveFromTrackResponses, SaveProfileData, SaveProfileErrors, SaveProfileResponses, UpdateTrackData, UpdateTrackErrors, UpdateTrackResponses } from './types.gen';
+import { zAcceptConsentBody, zAcceptConsentResponse, zActOnNotificationBody, zActOnNotificationPath, zActOnNotificationResponse, zAddToTrackPath, zAddToTrackResponse, zCreateDemoEventBody, zCreateDemoEventResponse, zDeleteProfileResponse, zGetCatalogResponse, zGetLivenessResponse, zGetMeResponse, zGetNotificationsResponse, zGetReadinessResponse, zGetTrackResponse, zLoginDemoResponse, zLoginMaxBody, zLoginMaxResponse, zRemoveFromTrackPath, zRemoveFromTrackResponse, zSaveProfileBody, zSaveProfileResponse, zUpdateTrackBody, zUpdateTrackPath, zUpdateTrackResponse } from './zod.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -145,6 +145,26 @@ export const saveProfile = <ThrowOnError extends boolean = true>(options: Option
     responseStyle: 'data',
     security: [{ scheme: 'bearer', type: 'http' }],
     url: '/v1/me',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Accept Consent
+ */
+export const acceptConsent = <ThrowOnError extends boolean = true>(options: Options<AcceptConsentData, ThrowOnError>): RequestResult<AcceptConsentResponses, AcceptConsentErrors, ThrowOnError, 'data'> => (options.client ?? client).post<AcceptConsentResponses, AcceptConsentErrors, ThrowOnError, 'data'>({
+    requestValidator: async (data) => await z.object({
+        body: zAcceptConsentBody,
+        path: z.never().optional(),
+        query: z.never().optional()
+    }).parseAsync(data),
+    responseValidator: async (data) => await zAcceptConsentResponse.parseAsync(data),
+    responseStyle: 'data',
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/me/consent',
     ...options,
     headers: {
         'Content-Type': 'application/json',

@@ -11,9 +11,10 @@ from app.api.dependencies import DbSessionDep
 from app.api.errors import ApiError
 from app.db.models.route import LoginSession, Reminder, Student, new_id
 from app.route.auth import describe_user, issue_session, validate_init_data
-from app.route.catalog import OLYMPIADS, PROGRAMS
+from app.route.catalog import OLYMPIADS, PROGRAMS, SUBJECTS
 from app.route.schemas import (
     Catalog,
+    ConsentRequest,
     DemoEvent,
     LoginRequest,
     Me,
@@ -68,6 +69,7 @@ async def catalog(request: Request) -> Catalog:
     username = settings.bot.username if settings.bot else ""
     return Catalog(
         programs=PROGRAMS,
+        subjects=SUBJECTS,
         olympiads=OLYMPIADS,
         demo_enabled=settings.demo_enabled,
         bot_url=f"https://max.ru/{username}" if username else None,
@@ -111,6 +113,14 @@ async def login_demo(db: DbSessionDep, request: Request) -> SessionResponse:
 @router.get("/me", response_model=Me, operation_id="getMe")
 async def me(user: UserDep) -> Me:
     return describe_user(user)
+
+
+@router.post("/me/consent", response_model=Me, operation_id="acceptConsent")
+async def accept_consent(body: ConsentRequest, user: UserDep, db: DbSessionDep) -> Me:
+    student = await lock_student(db, user.id)
+    student.profile = {**student.profile, "consent": body.accepted}
+    await db.commit()
+    return describe_user(student)
 
 
 @router.put("/me", response_model=Me, operation_id="saveProfile")

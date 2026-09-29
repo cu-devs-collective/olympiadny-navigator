@@ -37,7 +37,7 @@ def route_buttons(
                 buttons=[
                     [
                         LinkButton(
-                            text="Открыть мой маршрут",
+                            text="Открыть мой навигатор",
                             url=f"https://max.ru/{username}?startapp=route",
                         ),
                     ]
@@ -69,7 +69,7 @@ def reminder_buttons(
         rows.append(
             [
                 LinkButton(
-                    text="Мой маршрут и условия", url=f"https://max.ru/{username}?startapp=route"
+                    text="Мой навигатор и условия", url=f"https://max.ru/{username}?startapp=route"
                 )
             ]
         )

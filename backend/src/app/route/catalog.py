@@ -3,7 +3,7 @@
 from typing import Literal
 
 from app.api.errors import ApiError
-from app.route.schemas import Benefit, Event, Olympiad, Program, Source
+from app.route.schemas import Benefit, Event, Olympiad, Program, Source, Subject
 
 
 RULES = Source(
@@ -34,6 +34,7 @@ PROGRAMS = [
     ),
     Program(
         id="hse-se",
+        direction="09.03.04 Программная инженерия",
         name="Программная инженерия",
         short_name="ПИ",
         description="Создание программных систем, разработка продуктов и инженерные практики.",
@@ -262,6 +263,7 @@ PROGRAMS.extend(
         ),
         Program(
             id="itmo-software",
+            direction="09.03.04 Программная инженерия",
             name="Системное и прикладное программное обеспечение",
             short_name="СППО",
             university="Университет ИТМО",
@@ -288,6 +290,38 @@ for olympiad in OLYMPIADS:
                 ),
             )
         )
+
+SUBJECTS = [
+    Subject(id="math", name="Математика"),
+    Subject(id="informatics", name="Информатика"),
+    Subject(id="physics", name="Физика"),
+    Subject(id="chemistry", name="Химия"),
+    Subject(id="biology", name="Биология"),
+    Subject(id="history", name="История"),
+    Subject(id="social", name="Обществознание"),
+    Subject(id="russian", name="Русский язык"),
+    Subject(id="literature", name="Литература"),
+    Subject(id="english", name="Английский язык"),
+    Subject(id="geography", name="География"),
+    Subject(id="economics", name="Экономика"),
+]
+for subject in SUBJECTS[2:]:
+    OLYMPIADS.append(
+        Olympiad(
+            id=f"vsosh-{subject.id}",
+            name="Всероссийская олимпиада школьников",
+            profile=subject.name,
+            subject=subject.id,
+            kind="vsosh",
+            grades=[9, 10, 11],
+            level="Школьный → заключительный этап",
+            description=f"ВсОШ · {subject.name}. Дату школьного этапа уточните в своей школе.",
+            registration_url=VSOSH.url,
+            source=VSOSH,
+            benefits=[],
+            events=[Event(id="school", title="Школьный этап", kind="stage", source=VSOSH)],
+        )
+    )
 
 BY_ID = {item.id: item for item in OLYMPIADS}
 

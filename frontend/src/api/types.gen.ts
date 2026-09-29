@@ -48,6 +48,10 @@ export type Catalog = {
      */
     programs: Array<Program>;
     /**
+     * Subjects
+     */
+    subjects: Array<Subject>;
+    /**
      * Olympiads
      */
     olympiads: Array<Olympiad>;
@@ -67,6 +71,16 @@ export type Catalog = {
      * Bot Url
      */
     bot_url?: string | null;
+};
+
+/**
+ * ConsentRequest
+ */
+export type ConsentRequest = {
+    /**
+     * Accepted
+     */
+    accepted: true;
 };
 
 /**
@@ -288,7 +302,7 @@ export type Olympiad = {
     /**
      * Subject
      */
-    subject: 'math' | 'informatics';
+    subject: 'math' | 'informatics' | 'physics' | 'chemistry' | 'biology' | 'history' | 'social' | 'russian' | 'literature' | 'english' | 'geography' | 'economics';
     /**
      * Kind
      */
@@ -339,7 +353,7 @@ export type Profile = {
     /**
      * Subjects
      */
-    subjects?: Array<'math' | 'informatics'>;
+    subjects?: Array<'math' | 'informatics' | 'physics' | 'chemistry' | 'biology' | 'history' | 'social' | 'russian' | 'literature' | 'english' | 'geography' | 'economics'>;
     /**
      * Program Ids
      */
@@ -395,6 +409,10 @@ export type Program = {
      */
     description: string;
     /**
+     * Direction
+     */
+    direction?: string;
+    /**
      * Url
      */
     url?: string;
@@ -435,6 +453,20 @@ export type Source = {
      * Note
      */
     note?: string;
+};
+
+/**
+ * Subject
+ */
+export type Subject = {
+    /**
+     * Id
+     */
+    id: 'math' | 'informatics' | 'physics' | 'chemistry' | 'biology' | 'history' | 'social' | 'russian' | 'literature' | 'english' | 'geography' | 'economics';
+    /**
+     * Name
+     */
+    name: string;
 };
 
 /**
@@ -657,6 +689,31 @@ export type SaveProfileResponses = {
 };
 
 export type SaveProfileResponse = SaveProfileResponses[keyof SaveProfileResponses];
+
+export type AcceptConsentData = {
+    body: ConsentRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/me/consent';
+};
+
+export type AcceptConsentErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AcceptConsentError = AcceptConsentErrors[keyof AcceptConsentErrors];
+
+export type AcceptConsentResponses = {
+    /**
+     * Successful Response
+     */
+    200: Me;
+};
+
+export type AcceptConsentResponse = AcceptConsentResponses[keyof AcceptConsentResponses];
 
 export type GetTrackData = {
     body?: never;

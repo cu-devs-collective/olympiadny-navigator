@@ -3,6 +3,13 @@
 import * as z from 'zod';
 
 /**
+ * ConsentRequest
+ */
+export const zConsentRequest = z.object({
+    accepted: z.literal(true)
+});
+
+/**
  * DemoEvent
  */
 export const zDemoEvent = z.object({
@@ -96,7 +103,20 @@ export const zOk = z.object({
 export const zProfile = z.object({
     grade: z.int().gte(9).lte(11).optional().default(10),
     admission_year: z.int().gte(2026).lte(2035).optional().default(2028),
-    subjects: z.array(z.enum(['math', 'informatics'])).min(1).max(2).optional(),
+    subjects: z.array(z.enum([
+        'math',
+        'informatics',
+        'physics',
+        'chemistry',
+        'biology',
+        'history',
+        'social',
+        'russian',
+        'literature',
+        'english',
+        'geography',
+        'economics'
+    ])).min(1).max(12).optional(),
     program_ids: z.array(z.string()).max(2).optional(),
     timezone: z.string().optional().default('Europe/Moscow'),
     notifications_enabled: z.boolean().optional().default(false),
@@ -124,6 +144,7 @@ export const zProgram = z.object({
     university: z.string().optional().default('НИУ ВШЭ'),
     campus: z.string().optional().default('Москва'),
     description: z.string(),
+    direction: z.string().optional().default('01.03.02 Прикладная математика и информатика'),
     url: z.string().optional().default('https://ba.hse.ru/')
 });
 
@@ -183,7 +204,20 @@ export const zOlympiad = z.object({
     id: z.string(),
     name: z.string(),
     profile: z.string(),
-    subject: z.enum(['math', 'informatics']),
+    subject: z.enum([
+        'math',
+        'informatics',
+        'physics',
+        'chemistry',
+        'biology',
+        'history',
+        'social',
+        'russian',
+        'literature',
+        'english',
+        'geography',
+        'economics'
+    ]),
     kind: z.enum(['vsosh', 'listed']),
     season: z.string().optional().default('2026/27'),
     grades: z.array(z.int()),
@@ -196,13 +230,35 @@ export const zOlympiad = z.object({
 });
 
 /**
+ * Subject
+ */
+export const zSubject = z.object({
+    id: z.enum([
+        'math',
+        'informatics',
+        'physics',
+        'chemistry',
+        'biology',
+        'history',
+        'social',
+        'russian',
+        'literature',
+        'english',
+        'geography',
+        'economics'
+    ]),
+    name: z.string()
+});
+
+/**
  * Catalog
  */
 export const zCatalog = z.object({
     programs: z.array(zProgram),
+    subjects: z.array(zSubject),
     olympiads: z.array(zOlympiad),
     snapshot_date: z.string().optional().default('2026-09-30'),
-    notice: z.string().optional().default('Правила приёма 2026 года — ориентир. Условия вашего года нужно проверить заново.'),
+    notice: z.string().optional().default('Данные актуальны на 30.09.2026'),
     demo_enabled: z.boolean(),
     bot_url: z.string().nullish()
 });
@@ -299,6 +355,13 @@ export const zSaveProfileBody = zProfile;
  * Successful Response
  */
 export const zSaveProfileResponse = zMe;
+
+export const zAcceptConsentBody = zConsentRequest;
+
+/**
+ * Successful Response
+ */
+export const zAcceptConsentResponse = zMe;
 
 /**
  * Successful Response

@@ -2,7 +2,7 @@
 # Requires APP_DEMO_ENABLED=true. Credentials are created per run, never embedded.
 schemaVersion: '1.0'
 solution:
-  name: Олимпиадный маршрут
+  name: Олимпиадный навигатор
 api:
   baseUrl: https://max-hackathon.centraluniversity.dev/api
   openapi: ./backend/spec/openapi.yaml

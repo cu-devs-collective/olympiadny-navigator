@@ -104,10 +104,10 @@ async def run_bot(settings: Settings | None = None) -> None:
                 *[
                     BotCommand(name=name, description=description)
                     for name, description in [
-                        ("start", "Меню маршрута"),
+                        ("start", "Меню навигатора"),
                         ("profile", "Класс и программы вузов"),
                         ("catalog", "Найти олимпиаду"),
-                        ("track", "Мой маршрут и отметки"),
+                        ("track", "Мой навигатор и отметки"),
                         ("deadlines", "Ближайшие сроки"),
                         ("settings", "Сообщения и тихие часы"),
                         ("stop", "Отключить напоминания"),

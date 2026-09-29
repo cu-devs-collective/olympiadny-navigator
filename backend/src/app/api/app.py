@@ -42,7 +42,7 @@ def create_app(settings: Settings | None = None) -> fastapi.FastAPI:
     configure_logging(settings.logging)
 
     app = fastapi.FastAPI(
-        title="Олимпиадный маршрут",
+        title="Олимпиадный навигатор",
         version="0.1.0",
         root_path=API_ROOT_PATH,
         servers=[{"url": API_ROOT_PATH}],
