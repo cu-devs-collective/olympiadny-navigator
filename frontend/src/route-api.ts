@@ -87,7 +87,15 @@ export const api = {
       initData ? { init_data: initData } : undefined,
     ),
   me: () => request<Me>("/me"),
-  save: (profile: Profile) => request<Me>("/me", "PUT", profile),
+  save: (profile: Profile) =>
+    request<Me>("/me", "PUT", {
+      grade: profile.grade,
+      admission_year: profile.admission_year,
+      subjects: profile.subjects,
+      program_ids: profile.program_ids,
+      timezone: profile.timezone,
+      consent: profile.consent,
+    }),
   delete: () => request("/me", "DELETE"),
   track: () => request<TrackResponse>("/track"),
   add: (id: string) => request<TrackResponse>(`/track/${id}`, "PUT"),

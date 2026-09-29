@@ -123,7 +123,8 @@ export const zProgram = z.object({
     short_name: z.string(),
     university: z.string().optional().default('НИУ ВШЭ'),
     campus: z.string().optional().default('Москва'),
-    description: z.string()
+    description: z.string(),
+    url: z.string().optional().default('https://ba.hse.ru/')
 });
 
 /**

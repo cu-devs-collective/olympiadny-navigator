@@ -6,14 +6,14 @@ test.beforeEach(async ({ page }) => {
   await page.route("https://fonts.googleapis.com/**", (route) => route.abort());
 });
 
-test("personal route: goals, reminder action, persistence and deletion", async ({
+test("personal route: derived year, status, persistence and deletion", async ({
   page,
 }, testInfo) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "Найди свою олимпиаду" }),
+    page.getByRole("heading", { name: "Олимпиады", exact: true }),
   ).toBeVisible();
   await page.screenshot({
     path: testInfo.outputPath("catalog.png"),
@@ -23,7 +23,20 @@ test("personal route: goals, reminder action, persistence and deletion", async (
   const modal = page.getByRole("dialog");
   await expect(modal).toBeVisible();
   await modal.getByLabel(/Прикладная математика и информатика/).check();
-  await modal.getByRole("switch").check();
+  await modal.getByLabel("Сейчас учусь в").selectOption("11");
+  const year = new Date().getFullYear() + (new Date().getMonth() >= 8 ? 1 : 0);
+  await expect(modal.getByLabel("Год поступления")).toHaveValue(String(year));
+  await expect(modal.getByLabel("Год поступления")).toHaveAttribute(
+    "readonly",
+    "",
+  );
+  await modal.getByLabel("Сейчас учусь в").selectOption("9");
+  await expect(modal.getByLabel("Год поступления")).toHaveValue(
+    String(year + 2),
+  );
+  await expect(
+    page.getByRole("button", { name: "Напоминания", exact: true }),
+  ).toHaveCount(0);
   await modal.getByLabel("Разрешаю сохранять").check();
   await modal.getByRole("button", { name: "Сохранить мой маршрут" }).click();
   await expect(modal).not.toBeVisible();
@@ -40,20 +53,9 @@ test("personal route: goals, reminder action, persistence and deletion", async (
   await expect(
     page.getByRole("heading", { name: "Математика", exact: true }),
   ).toBeVisible();
-  await page.getByText("Проверить напоминания · тестовые события").click();
   await page
-    .getByRole("button", { name: "Тест регистрации", exact: true })
-    .click();
-  await expect(
-    page.getByText("Пример в браузере", { exact: true }),
-  ).toBeVisible();
-  await page
-    .getByRole("button", { name: "Я зарегистрировался", exact: true })
-    .click();
-  await page
-    .getByRole("navigation")
-    .getByRole("button", { name: "Мой маршрут" })
-    .click();
+    .getByLabel("Статус: Всероссийская олимпиада школьников, Математика")
+    .selectOption("registered");
   await expect(
     page.getByLabel("Статус: Всероссийская олимпиада школьников, Математика"),
   ).toHaveValue("registered");
@@ -96,7 +98,7 @@ test("catalog filtering and honest rules in the detail dialog", async ({
 }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Информатика", exact: true }).click();
-  await expect(page.locator(".olympiad-card")).toHaveCount(3);
+  await expect(page.locator(".olympiad-card")).toHaveCount(4);
   await page
     .getByRole("textbox", { name: "Поиск олимпиад" })
     .fill("нет такой олимпиады");
@@ -104,7 +106,7 @@ test("catalog filtering and honest rules in the detail dialog", async ({
     page.getByText("По этим условиям ничего не нашли"),
   ).toBeVisible();
   await page.getByRole("button", { name: "Сбросить фильтры" }).click();
-  await expect(page.locator(".olympiad-card")).toHaveCount(5);
+  await expect(page.locator(".olympiad-card")).toHaveCount(9);
   await page
     .locator(".olympiad-card")
     .filter({ hasText: "Высшая проба" })
@@ -113,7 +115,7 @@ test("catalog filtering and honest rules in the detail dialog", async ({
     .click();
   const modal = page.getByRole("dialog");
   await expect(modal.getByText("Нужна проверка", { exact: true })).toHaveCount(
-    2,
+    4,
   );
   await expect(modal.getByText(/Они не подтверждают льготу/)).toBeVisible();
   await modal.getByRole("button", { name: "Закрыть", exact: true }).click();

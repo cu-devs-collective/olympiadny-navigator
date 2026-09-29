@@ -39,7 +39,7 @@ async def list_track(db: AsyncSession, user_id: str) -> TrackResponse:
 
 
 async def sync_reminders(db: AsyncSession, user: Student) -> None:
-    """Reconcile future reminders; never resurrect a sent or cancelled reminder."""
+    """Reconcile future reminders; never resend a delivered or ambiguous job."""
     profile = Profile(**user.profile)
     items = list(await db.scalars(select(TrackItem).where(TrackItem.user_id == user.id)))
     jobs = list(await db.scalars(select(Reminder).where(Reminder.user_id == user.id)))
@@ -66,6 +66,10 @@ async def sync_reminders(db: AsyncSession, user: Student) -> None:
                     if deadline <= now:
                         continue
                     valid.add(key)
+                    if key in existing and existing[key].state == "cancelled" and due > now:
+                        # /resume restores only unsent future jobs that are relevant again.
+                        existing[key].state = "pending"
+                        existing[key].due_at = due
                     if key not in existing and due > now:
                         db.add(
                             Reminder(

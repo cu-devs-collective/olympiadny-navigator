@@ -1,23 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { api, ApiError, openSource, session } from "./route-api";
-import type {
-  Catalog,
-  Me,
-  Notification,
-  Olympiad,
-  Profile,
-  TrackEntry,
-} from "./route-api";
+import type { Catalog, Me, Olympiad, Profile, TrackEntry } from "./route-api";
 import { Icon } from "./icons";
 import "./App.css";
 
-type Tab = "discover" | "track" | "calendar" | "notifications" | "profile";
+type Tab = "discover" | "track" | "calendar" | "profile";
 const tabs: { id: Tab; label: string; icon: string }[] = [
-  { id: "discover", label: "Обзор олимпиад", icon: "grid" },
+  { id: "discover", label: "Олимпиады", icon: "grid" },
   { id: "track", label: "Мой маршрут", icon: "route" },
   { id: "calendar", label: "Календарь", icon: "calendar" },
-  { id: "notifications", label: "Напоминания", icon: "bell" },
   { id: "profile", label: "Мой профиль", icon: "user" },
 ];
 const subjects = { math: "Математика", informatics: "Информатика" };
@@ -26,34 +18,55 @@ const statuses = {
   registered: "Регистрация отмечена",
   completed: "Участие завершено",
 };
-const delivery: Record<string, string> = {
-  pending: "В очереди",
-  sending: "Отправляется",
-  sent: "Отправлено в MAX",
-  preview: "Пример в браузере",
-  failed: "Отправка не подтверждена",
-  cancelled: "Отменено",
-  read: "Прочитано",
-};
-const date = (value: string | number, timezone = "Europe/Moscow") =>
+const zones = [
+  "Europe/Kaliningrad",
+  "Europe/Moscow",
+  "Europe/Samara",
+  "Asia/Yekaterinburg",
+  "Asia/Omsk",
+  "Asia/Krasnoyarsk",
+  "Asia/Irkutsk",
+  "Asia/Yakutsk",
+  "Asia/Vladivostok",
+  "Asia/Magadan",
+  "Asia/Kamchatka",
+];
+function graduationYear(grade: number) {
+  const parts = new Intl.DateTimeFormat("en", {
+    timeZone: "Europe/Moscow",
+    year: "numeric",
+    month: "numeric",
+  }).formatToParts(new Date());
+  const year = Number(parts.find((p) => p.type === "year")!.value);
+  const month = Number(parts.find((p) => p.type === "month")!.value);
+  return year + (month >= 9 ? 1 : 0) + 11 - grade;
+}
+const date = (value: string, timezone = "Europe/Moscow") =>
   new Intl.DateTimeFormat("ru-RU", {
     day: "numeric",
     month: "long",
     hour: "2-digit",
     minute: "2-digit",
     timeZone: timezone,
-  }).format(new Date(typeof value === "number" ? value * 1000 : value));
-
+  }).format(new Date(value));
 function registration(o: Olympiad, now: number) {
-  const event = o.events.find((e) => e.kind === "registration");
-  if (!event?.deadline) return { label: "Сроки уточняются", closed: false };
-  if (new Date(event.deadline).getTime() < now)
-    return { label: "Регистрация закрыта", closed: true };
-  if (event.starts_at && new Date(event.starts_at).getTime() > now)
-    return { label: "Регистрация впереди", closed: false };
-  return { label: "Регистрация открыта", closed: false };
+  const e =
+    o.events.find(
+      (e) =>
+        e.kind === "registration" &&
+        e.deadline &&
+        Date.parse(e.deadline) >= now,
+    ) || o.events.find((e) => e.kind === "registration");
+  if (!e?.deadline) return { label: "Ждём расписание", open: false };
+  if (Date.parse(e.deadline) < now)
+    return { label: "Регистрация закрыта", open: false };
+  if (e.starts_at && Date.parse(e.starts_at) > now)
+    return { label: "Регистрация впереди", open: false };
+  return {
+    label: `До ${new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short", timeZone: "Europe/Moscow" }).format(new Date(e.deadline))}`,
+    open: true,
+  };
 }
-
 function Dialog({
   title,
   close,
@@ -62,19 +75,20 @@ function Dialog({
 }: {
   title: string;
   close: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
   error?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
-    ref.current?.showModal();
-    const dialog = ref.current;
-    return () => dialog?.close();
+    const d = ref.current;
+    d?.showModal();
+    return () => d?.close();
   }, []);
   return (
     <dialog
       ref={ref}
       className="dialog"
+      aria-label={title}
       onCancel={close}
       onClick={(e) => {
         if (e.target === e.currentTarget) close();
@@ -82,76 +96,40 @@ function Dialog({
     >
       <div className="dialog-head">
         <h2>{title}</h2>
-        <button className="icon-button" onClick={close} aria-label="Закрыть">
+        <button className="icon-button" aria-label="Закрыть" onClick={close}>
           <Icon name="close" />
         </button>
       </div>
       {error && (
-        <div className="error-banner" role="alert">
+        <p className="error-banner" role="alert">
           {error}
-        </div>
+        </p>
       )}
       {children}
     </dialog>
   );
 }
-
 function ProfileForm({
   initial,
   catalog,
   save,
   busy,
-  isDemo,
 }: {
   initial: Profile;
   catalog: Catalog;
   save: (p: Profile) => void;
   busy: boolean;
-  isDemo: boolean;
 }) {
-  const [p, setP] = useState(initial);
+  const [p, setP] = useState({
+    ...initial,
+    admission_year: graduationYear(initial.grade),
+  });
   function submit(e: FormEvent) {
     e.preventDefault();
-    save(p);
-  }
-  function toggleProgram(id: string) {
-    setP({
-      ...p,
-      program_ids: p.program_ids.includes(id)
-        ? p.program_ids.filter((v) => v !== id)
-        : [...p.program_ids, id],
-    });
+    save({ ...p, admission_year: graduationYear(p.grade) });
   }
   return (
     <form className="profile-form" onSubmit={submit}>
-      <div>
-        <span className="eyebrow">01 / ТОЧКА НАЗНАЧЕНИЯ</span>
-        <h3>Куда хочешь поступить?</h3>
-        <p className="muted">
-          Выбери одну или две программы. Сравним их олимпиадные возможности.
-        </p>
-      </div>
-      <div className="program-options">
-        {catalog.programs.map((program) => (
-          <label
-            className={`program-option ${p.program_ids.includes(program.id) ? "selected" : ""}`}
-            key={program.id}
-          >
-            <input
-              type="checkbox"
-              checked={p.program_ids.includes(program.id)}
-              onChange={() => toggleProgram(program.id)}
-            />
-            <span>
-              <small>
-                {program.university} · {program.campus}
-              </small>
-              <strong>{program.name}</strong>
-              <span className="muted">{program.description}</span>
-            </span>
-          </label>
-        ))}
-      </div>
       <div className="form-grid">
         <label>
           Сейчас учусь в
@@ -161,7 +139,7 @@ function ProfileForm({
               setP({
                 ...p,
                 grade: +e.target.value,
-                admission_year: new Date().getFullYear() + 12 - +e.target.value,
+                admission_year: graduationYear(+e.target.value),
               })
             }
           >
@@ -174,16 +152,50 @@ function ProfileForm({
         </label>
         <label>
           Год поступления
-          <select
+          <input
+            aria-label="Год поступления"
             value={p.admission_year}
-            onChange={(e) => setP({ ...p, admission_year: +e.target.value })}
-          >
-            {Array.from({ length: 10 }, (_, i) => 2026 + i).map((y) => (
-              <option key={y}>{y}</option>
-            ))}
-          </select>
+            readOnly
+          />
+          <small>После окончания 11 класса</small>
         </label>
       </div>
+      <fieldset>
+        <legend>Куда хочешь поступить?</legend>
+        <p className="muted">Выбери одну или две программы.</p>
+        <div className="program-options">
+          {catalog.programs.map((program) => (
+            <label
+              key={program.id}
+              className={`program-option ${p.program_ids.includes(program.id) ? "selected" : ""}`}
+            >
+              <input
+                type="checkbox"
+                checked={p.program_ids.includes(program.id)}
+                disabled={
+                  !p.program_ids.includes(program.id) &&
+                  p.program_ids.length >= 2
+                }
+                onChange={() =>
+                  setP({
+                    ...p,
+                    program_ids: p.program_ids.includes(program.id)
+                      ? p.program_ids.filter((id) => id !== program.id)
+                      : [...p.program_ids, program.id],
+                  })
+                }
+              />
+              <span>
+                <small>
+                  {program.university} · {program.campus}
+                </small>
+                <strong>{program.name}</strong>
+                <small>{program.description}</small>
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
       <fieldset>
         <legend>Интересующие предметы</legend>
         <div className="subject-options">
@@ -206,121 +218,48 @@ function ProfileForm({
           ))}
         </div>
       </fieldset>
-      <div className="form-divider" />
-      <div>
-        <span className="eyebrow">02 / НА СВЯЗИ</span>
-        <h3>Напомним, когда пора действовать</h3>
-      </div>
-      <label className="toggle-row">
-        <span>
-          <strong>Напоминания {isDemo ? "в демо" : "в MAX"}</strong>
-          <small>
-            {isDemo
-              ? "В браузере показываем пример сообщения. Реальная доставка доступна после входа из MAX."
-              : "Регистрации, этапы и проверенные изменения. Можно отключить в любой момент."}
-          </small>
-        </span>
-        <input
-          type="checkbox"
-          role="switch"
-          checked={p.notifications_enabled}
-          onChange={(e) =>
-            setP({ ...p, notifications_enabled: e.target.checked })
-          }
-        />
-      </label>
       <label>
         Часовой пояс
         <select
           value={p.timezone}
           onChange={(e) => setP({ ...p, timezone: e.target.value })}
         >
-          {[
-            "Europe/Kaliningrad",
-            "Europe/Moscow",
-            "Europe/Samara",
-            "Asia/Yekaterinburg",
-            "Asia/Omsk",
-            "Asia/Krasnoyarsk",
-            "Asia/Irkutsk",
-            "Asia/Yakutsk",
-            "Asia/Vladivostok",
-            "Asia/Magadan",
-            "Asia/Kamchatka",
-          ].map((z) => (
-            <option key={z} value={z}>
-              {z.split("/")[1].replaceAll("_", " ")}
-            </option>
+          {zones.map((z) => (
+            <option key={z}>{z}</option>
           ))}
         </select>
       </label>
-      <div className="form-grid">
-        <label>
-          Не беспокоить с
-          <select
-            value={p.quiet_start}
-            onChange={(e) => setP({ ...p, quiet_start: +e.target.value })}
-          >
-            {Array.from({ length: 24 }, (_, i) => (
-              <option key={i} value={i}>
-                {String(i).padStart(2, "0")}:00
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          До
-          <select
-            value={p.quiet_end}
-            onChange={(e) => setP({ ...p, quiet_end: +e.target.value })}
-          >
-            {Array.from({ length: 24 }, (_, i) => (
-              <option key={i} value={i}>
-                {String(i).padStart(2, "0")}:00
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <p className="small muted">
-        Одинаковое время начала и окончания отключает тихие часы.
+      <p className="inline-note">
+        Сроки и действия приходят в чат MAX. Включить сообщения и настроить
+        тихие часы можно командой /settings.
       </p>
       <label className="consent">
         <input
           type="checkbox"
-          required
           checked={p.consent}
           onChange={(e) => setP({ ...p, consent: e.target.checked })}
         />
         <span>
           Разрешаю сохранять класс, цели, настройки и отметки для работы
-          маршрута. При входе через MAX также сохраняется его идентификатор.
-          Профиль можно удалить вместе с историей.
+          маршрута. При входе через MAX — также его идентификатор. Профиль можно
+          удалить вместе с историей.
         </span>
       </label>
       <button
-        className="button primary wide"
+        className="button primary"
         disabled={
-          busy || !p.program_ids.length || !p.subjects.length || !p.consent
+          busy || !p.consent || !p.program_ids.length || !p.subjects.length
         }
       >
         {busy ? "Сохраняем…" : "Сохранить мой маршрут"}
-        <Icon name="arrow" />
       </button>
     </form>
   );
 }
-
 function App() {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 60000);
-    return () => clearInterval(timer);
-  }, []);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [me, setMe] = useState<Me | null>(null);
   const [track, setTrack] = useState<TrackEntry[]>([]);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [tab, setTab] = useState<Tab>("discover");
   const [query, setQuery] = useState("");
   const [subject, setSubject] = useState("all");
@@ -332,66 +271,57 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
-
-  const refresh = useCallback(async () => {
-    const [user, route, messages] = await Promise.all([
-      api.me(),
-      api.track(),
-      api.notifications(),
-    ]);
-    setMe(user);
-    setTrack(route.items);
-    setNotifications(messages.items);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(timer);
   }, []);
-
+  const refresh = useCallback(async () => {
+    const [u, t] = await Promise.all([api.me(), api.track()]);
+    setMe(u);
+    setTrack(t.items);
+  }, []);
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const data = await api.catalog();
-      setCatalog(data);
-      const initData = window.WebApp?.initData;
+      setCatalog(await api.catalog());
       window.WebApp?.ready?.();
-      if (initData) {
-        const result = await api.login(initData);
-        session.set(result.token);
+      if (window.WebApp?.initData) {
+        const r = await api.login(window.WebApp.initData);
+        session.set(r.token);
       }
       if (session.get()) await refresh();
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) session.clear();
-      setError(e instanceof Error ? e.message : "Не удалось открыть маршрут");
+      setError(e instanceof Error ? e.message : "Не удалось загрузить каталог");
     } finally {
       setLoading(false);
     }
   }, [refresh]);
-
   useEffect(() => {
-    const timer = setTimeout(() => {
-      void load();
-    }, 0);
-    return () => clearTimeout(timer);
+    const t = setTimeout(() => void load(), 0);
+    return () => clearTimeout(t);
   }, [load]);
   useEffect(() => {
     if (!toast) return;
-    const timer = setTimeout(() => setToast(""), 4000);
-    return () => clearTimeout(timer);
+    const t = setTimeout(() => setToast(""), 4000);
+    return () => clearTimeout(t);
   }, [toast]);
   useEffect(() => {
-    if (!me) return;
+    if (!me?.id) return;
     const sync = () => {
-      if (!document.hidden)
-        void refresh().catch(() => {
-          /* Keep the last known state until an explicit request. */
-        });
+      if (!document.hidden) void refresh().catch(() => {});
     };
-    const timer = setInterval(sync, 15000);
+    const t = setInterval(sync, 15000);
     window.addEventListener("focus", sync);
+    document.addEventListener("visibilitychange", sync);
     return () => {
-      clearInterval(timer);
+      clearInterval(t);
       window.removeEventListener("focus", sync);
+      document.removeEventListener("visibilitychange", sync);
     };
-  }, [me?.id, refresh]); // eslint-disable-line react-hooks/exhaustive-deps
-
+  }, [me?.id, refresh]);
   async function run(action: () => Promise<void>) {
     if (busy) return;
     setBusy(true);
@@ -403,7 +333,6 @@ function App() {
         session.clear();
         setMe(null);
         setTrack([]);
-        setNotifications([]);
       }
       setError(
         e instanceof Error ? e.message : "Не удалось выполнить действие",
@@ -415,887 +344,552 @@ function App() {
   async function login() {
     if (!window.WebApp?.initData && !catalog?.demo_enabled) {
       if (catalog?.bot_url) openSource(catalog.bot_url);
-      else setError("Для входа откройте мини-приложение через бота MAX.");
       return;
     }
     await run(async () => {
-      const result = await api.login(window.WebApp?.initData);
-      session.set(result.token);
-      setMe(result.user);
+      const r = await api.login(window.WebApp?.initData);
+      session.set(r.token);
+      setMe(r.user);
       setEditing(true);
       await refresh();
     });
   }
-  function requireProfile() {
+  function add(o: Olympiad) {
     if (!me) {
       void login();
-      return false;
+      return;
     }
     if (!me.profile.consent || !me.profile.program_ids.length) {
       setEditing(true);
-      return false;
+      return;
     }
-    return true;
-  }
-  function add(o: Olympiad) {
-    if (!requireProfile()) return;
     void run(async () => {
-      const r = await api.add(o.id);
-      setTrack(r.items);
-      setToast("Олимпиада добавлена в маршрут");
+      setTrack((await api.add(o.id)).items);
+      setToast("Добавлено в маршрут");
     });
   }
   function change(id: string, status?: string) {
     void run(async () => {
-      const r = status ? await api.update(id, status) : await api.remove(id);
-      setTrack(r.items);
-      await refresh();
-      setToast(status ? "Статус обновлён" : "Олимпиада удалена из маршрута");
-    });
-  }
-  function save(profile: Profile) {
-    void run(async () => {
-      const user = await api.save(profile);
-      setMe(user);
-      setEditing(false);
-      setToast("Маршрут настроен. Выбирай олимпиады!");
-    });
-  }
-  function demo(id: string, kind: "registration" | "rule_change") {
-    void run(async () => {
-      await api.demo(id, kind);
-      await refresh();
-      setTab("notifications");
-      setToast(
-        me?.is_demo
-          ? "Пример уведомления готов"
-          : "Тестовое сообщение поставлено в очередь MAX",
+      setTrack(
+        (status ? await api.update(id, status) : await api.remove(id)).items,
       );
+      setToast(status ? "Статус обновлён" : "Удалено из маршрута");
     });
   }
-  const selectedPrograms =
+  function save(p: Profile) {
+    void run(async () => {
+      setMe(await api.save(p));
+      setEditing(false);
+      setToast("Профиль сохранён");
+    });
+  }
+  const selected =
     catalog?.programs.filter((p) => me?.profile.program_ids.includes(p.id)) ||
     [];
   const entries =
     catalog?.olympiads.filter((o) =>
       track.some((t) => t.olympiad_id === o.id),
     ) || [];
-  const benefitCount = (o: Olympiad) =>
+  const benefits = (o: Olympiad) =>
     o.benefits.filter(
-      (b) =>
-        b.kind !== "unknown" &&
-        (!selectedPrograms.length ||
-          selectedPrograms.some((p) => p.id === b.program_id)),
-    ).length;
+      (b) => !selected.length || selected.some((p) => p.id === b.program_id),
+    );
   const visible =
-    catalog?.olympiads
-      .filter(
-        (o) =>
-          (subject === "all" || o.subject === subject) &&
-          `${o.name} ${o.profile}`
-            .toLowerCase()
-            .includes(query.toLowerCase()) &&
-          (!onlyRelevant ||
-            (benefitCount(o) > 0 &&
-              (!me ||
-                (o.grades.includes(me.profile.grade) &&
-                  me.profile.subjects.includes(o.subject))))),
-      )
-      .sort((a, b) => benefitCount(b) - benefitCount(a)) || [];
+    catalog?.olympiads.filter(
+      (o) =>
+        (subject === "all" || o.subject === subject) &&
+        `${o.name} ${o.profile}`.toLowerCase().includes(query.toLowerCase()) &&
+        (!onlyRelevant ||
+          !me ||
+          (o.grades.includes(me.profile.grade) &&
+            me.profile.subjects.includes(o.subject))),
+    ) || [];
   const tz = me?.profile.timezone || "Europe/Moscow";
-  const calendarEvents = entries
+  const events = entries
     .flatMap((o) => o.events.map((e) => ({ ...e, olympiad: o })))
     .sort(
       (a, b) =>
-        (a.deadline ? Date.parse(a.deadline) : Infinity) -
-        (b.deadline ? Date.parse(b.deadline) : Infinity),
+        Date.parse(a.deadline || a.starts_at || "9999-01-01") -
+        Date.parse(b.deadline || b.starts_at || "9999-01-01"),
     );
-  const futureEvents = calendarEvents.filter(
-    (e) => e.deadline && Date.parse(e.deadline) > now,
-  );
-  const conflicts = new Set(
-    futureEvents
-      .filter((e) =>
-        futureEvents.some(
-          (other) =>
-            other.olympiad.id !== e.olympiad.id &&
-            other.deadline === e.deadline,
-        ),
-      )
-      .map((e) => e.olympiad.id),
-  );
-
-  function card(o: Olympiad) {
-    const item = track.find((t) => t.olympiad_id === o.id);
-    const state = registration(o, now);
+  function reset() {
+    setQuery("");
+    setSubject("all");
+    setOnlyRelevant(false);
+  }
+  function card(o: Olympiad, inTrack = false) {
+    const item = track.find((t) => t.olympiad_id === o.id),
+      state = registration(o, now);
+    const verified = benefits(o).filter((b) => b.kind !== "unknown");
     return (
       <article className="olympiad-card" key={o.id}>
         <div className="card-top">
-          <span className={`subject-icon ${o.subject}`}>
-            <span>{o.subject === "math" ? "∑" : "</>"}</span>
+          <span className={`subject-mark ${o.subject}`}>
+            {o.subject === "math" ? "∑" : "{ }"}
           </span>
-          <div className="card-tags">
-            <span className="tag">{subjects[o.subject]}</span>
-            <span className={`status-dot ${state.closed ? "closed" : ""}`}>
-              {state.label}
-            </span>
-          </div>
+          <span className={`status ${state.open ? "open" : ""}`}>
+            {state.label}
+          </span>
         </div>
-        <button className="card-title" onClick={() => setDetail(o)}>
-          <small>{o.name}</small>
-          <h3>
-            {o.profile}
-            <Icon name="external" size={17} />
-          </h3>
-        </button>
+        <div className="card-title">
+          <span className="muted">{o.name}</span>
+          <h2>{o.profile}</h2>
+        </div>
         <p className="card-description">{o.description}</p>
-        <div className="benefit-line">
-          <Icon name="book" size={17} />
+        <div className="card-facts">
+          <span>{o.kind === "vsosh" ? "ВсОШ" : "Олимпиада вуза"}</span>
           <span>
-            {benefitCount(o)
-              ? `БВИ в правилах 2026 · ${benefitCount(o)} ${benefitCount(o) === 1 ? "цель" : "цели"}`
-              : "Условия льгот требуют проверки"}
+            {o.grades[0]}–{o.grades.at(-1)} классы
           </span>
         </div>
+        <div className="benefit-label">
+          <Icon name="book" size={16} />
+          {verified.length
+            ? `Есть льготы в правилах 2026 · ${verified.length}`
+            : "Льготы требуют проверки"}
+        </div>
+        {inTrack && item && (
+          <label className="track-status">
+            Статус
+            <select
+              aria-label={`Статус: ${o.name}, ${o.profile}`}
+              value={item.status}
+              disabled={busy}
+              onChange={(e) => change(o.id, e.target.value)}
+            >
+              {Object.entries(statuses).map(([v, l]) => (
+                <option key={v} value={v}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <div className="card-footer">
           <button className="text-button" onClick={() => setDetail(o)}>
             Условия и сроки <Icon name="arrow" size={16} />
           </button>
-          <button
-            className={`add-button ${item ? "added" : ""}`}
-            disabled={busy}
-            onClick={() => (item ? setTab("track") : add(o))}
-            aria-label={
-              item
-                ? `Открыть маршрут: ${o.profile}`
-                : `Добавить в маршрут: ${o.name}, ${o.profile}`
-            }
-          >
-            <Icon name={item ? "check" : "plus"} size={18} />
-            {item ? "В маршруте" : "В маршрут"}
-          </button>
+          {inTrack ? (
+            <button
+              className="icon-button"
+              aria-label={`Удалить из маршрута: ${o.name}, ${o.profile}`}
+              disabled={busy}
+              onClick={() => change(o.id)}
+            >
+              <Icon name="close" size={18} />
+            </button>
+          ) : (
+            <button
+              className={`add-button ${item ? "added" : ""}`}
+              disabled={busy}
+              onClick={() => (item ? setTab("track") : add(o))}
+              aria-label={
+                item
+                  ? `Открыть маршрут: ${o.profile}`
+                  : `Добавить в маршрут: ${o.name}, ${o.profile}`
+              }
+            >
+              <Icon name={item ? "check" : "plus"} size={18} />
+              {item ? "В маршруте" : "В маршрут"}
+            </button>
+          )}
         </div>
       </article>
     );
   }
-
   return (
     <div className="app-shell">
-      <aside className="sidebar">
-        <a
-          className="brand"
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            setTab("discover");
-          }}
-        >
+      <header className="topbar">
+        <a className="brand" href="/" aria-label="Маршрут — главная">
           <span className="brand-mark">
-            <Icon name="route" size={26} />
+            <Icon name="route" size={23} />
           </span>
           <span>
-            маршрут<span className="brand-caption">ОЛИМПИАДНЫЙ НАВИГАТОР</span>
+            Маршрут<small>Олимпиады и поступление</small>
           </span>
         </a>
-        <span className="nav-caption">ТВОЯ ТРАЕКТОРИЯ</span>
-        <nav aria-label="Основная навигация">
-          {tabs.map((t) => (
+        <div className="topbar-right">
+          <span className="max-label">для MAX</span>
+          {catalog?.bot_url && (
             <button
-              key={t.id}
-              className={`nav-item ${tab === t.id ? "active" : ""}`}
-              onClick={() => setTab(t.id)}
-              aria-current={tab === t.id ? "page" : undefined}
+              className="button secondary chat-button"
+              onClick={() => openSource(catalog.bot_url!)}
             >
-              <Icon name={t.icon} />
-              <span>{t.label}</span>
-              {t.id === "track" && track.length > 0 && <b>{track.length}</b>}
+              Открыть чат <Icon name="external" size={16} />
             </button>
-          ))}
-        </nav>
-        <div className="sidebar-note">
-          <span className="small-symbol">↗</span>
-          <strong>
-            Большая цель.
-            <br />
-            Понятные шаги.
-          </strong>
-          <p>От первой олимпиады до осознанного выбора вуза.</p>
-          <span className="max-label">
-            Вместе с MAX <span>↗</span>
-          </span>
+          )}
         </div>
-        <div className="sidebar-bottom">
-          <span className="avatar">
-            <Icon name="user" size={18} />
-          </span>
-          <div>
-            <strong>
-              {me ? `${me.profile.grade} класс` : "Твой будущий маршрут"}
-            </strong>
-            <small>
-              {me
-                ? `Поступление в ${me.profile.admission_year}`
-                : "Начинается с одной цели"}
-            </small>
-          </div>
-        </div>
-      </aside>
-      <div className="main-shell">
-        <header className="topbar">
-          <div>
-            <span className="mobile-brand">
-              <Icon name="route" /> маршрут
-            </span>
-            <span className="breadcrumb">
-              Твоя траектория <span>/</span>{" "}
-              {tabs.find((t) => t.id === tab)?.label}
-            </span>
-          </div>
-          <div className="topbar-right">
-            <span className="season">СЕЗОН 2026 / 27</span>
-            <button
-              className="icon-button"
-              aria-label="Открыть напоминания"
-              onClick={() => setTab("notifications")}
-            >
-              <Icon name="bell" />
-              <i
-                className={
-                  me?.profile.notifications_enabled ? "notification-dot" : ""
-                }
-              />
-            </button>
-          </div>
-        </header>
-        <main>
-          {error && (
-            <div role="alert" className="error-banner">
-              <Icon name="info" />
-              <span>{error}</span>
+      </header>
+      <div className="workspace">
+        <aside className="sidebar">
+          <nav aria-label="Основная навигация">
+            {tabs.map((t) => (
               <button
+                key={t.id}
+                className={`nav-item ${tab === t.id ? "active" : ""}`}
+                aria-current={tab === t.id ? "page" : undefined}
                 onClick={() => {
-                  void load();
+                  setTab(t.id);
+                  setError("");
                 }}
               >
-                Повторить
+                <Icon name={t.icon} />
+                <span>{t.label}</span>
+                {t.id === "track" && track.length > 0 && <b>{track.length}</b>}
               </button>
-              <button aria-label="Закрыть ошибку" onClick={() => setError("")}>
-                <Icon name="close" size={16} />
+            ))}
+          </nav>
+          <div className="sidebar-context">
+            <span className="label">ТВОИ ЦЕЛИ</span>
+            {selected.length ? (
+              selected.map((p) => (
+                <div key={p.id}>
+                  <strong>
+                    {p.university} · {p.short_name}
+                  </strong>
+                  <small>{p.campus}</small>
+                </div>
+              ))
+            ) : (
+              <p>
+                Выбери программы в профиле, чтобы сравнить условия поступления.
+              </p>
+            )}
+            {me && (
+              <small>
+                {me.profile.grade} класс · поступление{" "}
+                {me.profile.admission_year}
+              </small>
+            )}
+          </div>
+          <div className="sidebar-chat">
+            <strong>Всё срочное — в чате</strong>
+            <p>
+              Ближайшие сроки, отметки о регистрации и управление сообщениями.
+            </p>
+            <code>/track · /deadlines</code>
+          </div>
+        </aside>
+        <main>
+          {error && (
+            <div className="error-banner" role="alert">
+              {error}
+              <button className="text-button" onClick={() => void load()}>
+                Повторить
               </button>
             </div>
           )}
           {loading ? (
-            <div className="loading">
-              <span className="spinner" />
-              <h2>Собираем твой маршрут…</h2>
+            <div className="empty" role="status">
+              Загружаем маршрут…
             </div>
           ) : !catalog ? (
-            <div className="empty">
-              <Icon name="compass" size={42} />
-              <h2>Не удалось загрузить каталог</h2>
-              <button
-                className="button primary"
-                onClick={() => {
-                  void load();
-                }}
-              >
-                Попробовать ещё раз
-              </button>
-            </div>
+            <div className="empty">Каталог пока недоступен.</div>
           ) : (
             <>
               {me?.is_demo && (
                 <div className="demo-strip">
-                  <span>Демонстрационный профиль</span>
-                  <span>
-                    Данные сохраняются. Сообщения MAX показываются в виде
-                    примера.
-                  </span>
+                  Браузерное демо · отдельный профиль. Для сообщений и общего
+                  маршрута открой приложение из MAX.
                 </div>
               )}
               {tab === "discover" && (
                 <>
-                  <section className="hero">
-                    <div className="hero-copy">
-                      <span className="eyebrow">
-                        <i /> ТВОЙ СЛЕДУЮЩИЙ ШАГ
-                      </span>
-                      <h1>
-                        Большие планы
-                        <br />
-                        начинаются <em>с маршрута.</em>
-                      </h1>
+                  <div className="page-heading">
+                    <div>
+                      <span className="label">СЕЗОН 2026/27</span>
+                      <h1>Олимпиады</h1>
                       <p>
-                        Выбирай олимпиады под свою цель в вузе.
-                        <br />А мы поможем разобраться в условиях и сроках.
+                        Выбери предмет, проверь условия и добавь олимпиаду в
+                        свой маршрут.
                       </p>
+                    </div>
+                    {!me ? (
                       <button
-                        className="button dark"
-                        disabled={
-                          busy ||
-                          (!me &&
-                            !catalog.demo_enabled &&
-                            !window.WebApp?.initData)
-                        }
-                        onClick={() => (me ? setEditing(true) : void login())}
+                        className="button primary"
+                        disabled={busy}
+                        onClick={() => void login()}
                       >
-                        {me?.profile.consent
-                          ? "Изменить мои цели"
-                          : window.WebApp?.initData
-                            ? "Выбрать свою цель"
-                            : "Собрать маршрут"}
-                        <Icon name="arrow" size={18} />
+                        {catalog.demo_enabled
+                          ? "Собрать маршрут"
+                          : "Войти через MAX"}
+                        <Icon name="plus" size={18} />
                       </button>
-                      {!me &&
-                        !catalog.demo_enabled &&
-                        !window.WebApp?.initData && (
-                          <p className="small">
-                            Для начала откройте приложение через бота MAX.
-                          </p>
-                        )}
-                    </div>
-                    <div className="route-art" aria-hidden="true">
-                      <div className="orbit orbit-one" />
-                      <div className="orbit orbit-two" />
-                      <div className="art-line" />
-                      <div className="art-card start-card">
-                        <span className="art-icon">✦</span>
-                        <span>
-                          <small>ТОЧКА СТАРТА</small>
-                          <strong>Твой интерес</strong>
-                        </span>
-                        <i>01</i>
-                      </div>
-                      <div className="art-card olymp-card">
-                        <span className="art-icon blue">∑</span>
-                        <span>
-                          <small>ПО ПУТИ К ЦЕЛИ</small>
-                          <strong>Твоя олимпиада</strong>
-                        </span>
-                        <span className="mini-check">✓</span>
-                      </div>
-                      <div className="art-card goal-card">
-                        <span className="art-icon orange">↗</span>
-                        <span>
-                          <small>ТОЧКА НАЗНАЧЕНИЯ</small>
-                          <strong>Твой университет</strong>
-                        </span>
-                      </div>
-                      <span className="art-spark">✳</span>
-                    </div>
-                  </section>
-                  <section className="goals-strip">
-                    <div>
-                      <span className="mini-icon">
-                        <Icon name="compass" />
-                      </span>
-                      <div>
-                        <h3>
-                          {selectedPrograms.length
-                            ? "Твои цели"
-                            : "Сначала — направление"}
-                        </h3>
-                        <p>
-                          {selectedPrograms.length
-                            ? "НИУ ВШЭ · Москва"
-                            : "Две программы ВШЭ для первого маршрута"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="goal-chips">
-                      {selectedPrograms.length ? (
-                        selectedPrograms.map((p) => (
-                          <button key={p.id} onClick={() => setEditing(true)}>
-                            {p.short_name}
-                            <Icon name="check" size={14} />
-                          </button>
-                        ))
-                      ) : (
-                        <button
-                          onClick={() => (me ? setEditing(true) : void login())}
-                          disabled={busy || (!me && !catalog.demo_enabled)}
-                        >
-                          Выбрать программы <Icon name="plus" size={16} />
-                        </button>
-                      )}
-                    </div>
-                  </section>
-                  <div className="section-heading">
-                    <div>
-                      <span className="eyebrow">ВОЗМОЖНОСТИ ДЛЯ ТЕБЯ</span>
-                      <h2>
-                        Найди свою олимпиаду <span>{visible.length}</span>
-                      </h2>
-                    </div>
-                    <span className="small muted">
-                      9–11 классы · математика и IT
+                    ) : (
+                      <button
+                        className="button secondary"
+                        onClick={() => setEditing(true)}
+                      >
+                        Настроить цели
+                      </button>
+                    )}
+                  </div>
+                  <div className="catalog-summary">
+                    <span>
+                      <strong>{catalog.olympiads.length}</strong> профилей
+                      олимпиад
+                    </span>
+                    <span>
+                      <strong>{catalog.programs.length}</strong> программы вузов
+                    </span>
+                    <span>
+                      Источники проверены{" "}
+                      {(catalog.snapshot_date || "2026-09-30")
+                        .split("-")
+                        .reverse()
+                        .join(".")}
                     </span>
                   </div>
-                  <div className="catalog-toolbar">
-                    <div className="filter-tabs" aria-label="Предмет">
+                  <div className="filters">
+                    <label className="search">
+                      <Icon name="search" size={19} />
+                      <input
+                        aria-label="Поиск олимпиад"
+                        placeholder="Название или предмет"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                      />
+                    </label>
+                    <div className="segments">
                       {[
-                        ["all", "Все предметы"],
+                        ["all", "Все"],
                         ["math", "Математика"],
                         ["informatics", "Информатика"],
-                      ].map(([id, label]) => (
+                      ].map(([v, l]) => (
                         <button
-                          key={id}
-                          className={subject === id ? "active" : ""}
-                          onClick={() => setSubject(id)}
+                          key={v}
+                          aria-pressed={subject === v}
+                          onClick={() => setSubject(v)}
                         >
-                          {label}
+                          {l}
                         </button>
                       ))}
                     </div>
-                    <label className="search">
-                      <Icon name="search" size={18} />
-                      <input
-                        aria-label="Поиск олимпиад"
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Название или профиль"
-                      />
-                    </label>
                   </div>
-                  <label className="relevant">
-                    <input
-                      type="checkbox"
-                      checked={onlyRelevant}
-                      onChange={(e) => setOnlyRelevant(e.target.checked)}
-                    />
-                    С известными льготами для моих целей и предметов
-                  </label>
-                  <div className="cards-grid">{visible.map(card)}</div>
+                  <div className="result-line">
+                    <span>Найдено: {visible.length}</span>
+                    {me && (
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={onlyRelevant}
+                          onChange={(e) => setOnlyRelevant(e.target.checked)}
+                        />
+                        Мой класс и предметы
+                      </label>
+                    )}
+                  </div>
+                  <div className="catalog-grid">
+                    {visible.map((o) => card(o))}
+                  </div>
                   {!visible.length && (
                     <div className="empty">
-                      <Icon name="search" size={32} />
-                      <h3>По этим условиям ничего не нашли</h3>
-                      <p>Попробуй другой предмет или сбрось фильтры.</p>
-                      <button
-                        className="text-button"
-                        onClick={() => {
-                          setQuery("");
-                          setSubject("all");
-                          setOnlyRelevant(false);
-                        }}
-                      >
+                      <h2>По этим условиям ничего не нашли</h2>
+                      <button className="button secondary" onClick={reset}>
                         Сбросить фильтры
                       </button>
                     </div>
                   )}
-                  <div className="source-note">
-                    <Icon name="info" size={19} />
-                    <p>
-                      У каждой возможности — свой источник. Правила приёма 2026
-                      года служат ориентиром: для поступления в{" "}
-                      {me?.profile.admission_year || 2027} условия ещё нужно
-                      проверить.
-                    </p>
-                  </div>
+                  <p className="catalog-footnote">
+                    <Icon name="info" size={17} />
+                    {catalog.notice} Каталог обновляется вручную; окончательные
+                    сроки — на сайте организатора.
+                  </p>
                 </>
               )}
               {tab === "track" && (
                 <>
-                  <PageTitle
-                    eyebrow="ОТ ЦЕЛИ К ДЕЙСТВИЮ"
-                    title="Мой маршрут"
-                    text="Здесь только то, что ты выбрал. Двигайся в своём темпе."
-                  />
-                  <div className="stats">
+                  <div className="page-heading">
                     <div>
-                      <strong>{entries.length}</strong>
-                      <span>олимпиад в плане</span>
+                      <span className="label">ЛИЧНЫЙ ПЛАН</span>
+                      <h1>Мой маршрут</h1>
+                      <p>
+                        {selected
+                          .map((p) => `${p.university} · ${p.short_name}`)
+                          .join(" / ") ||
+                          "Добавь олимпиады, в которых планируешь участвовать."}
+                      </p>
                     </div>
-                    <div>
-                      <strong>
-                        {track.filter((t) => t.status === "registered").length}
-                      </strong>
-                      <span>регистраций отмечено</span>
-                    </div>
-                    <div>
-                      <strong>{selectedPrograms.length}</strong>
-                      <span>целевых программ</span>
-                    </div>
+                    <button
+                      className="button secondary"
+                      onClick={() => setTab("discover")}
+                    >
+                      Добавить олимпиаду <Icon name="plus" size={18} />
+                    </button>
                   </div>
-                  {!entries.length ? (
-                    <Empty
-                      title="Первый шаг — выбрать олимпиаду"
-                      text="Добавь интересующие профили из каталога. Здесь появятся твой план и следующие действия."
-                      action={() => setTab("discover")}
-                    />
+                  <p className="inline-note">
+                    Отметки синхронизируются с ботом. Команда /track открывает
+                    этот же список в чате; /settings включает сообщения о
+                    сроках.
+                  </p>
+                  {entries.length ? (
+                    <div className="catalog-grid">
+                      {entries.map((o) => card(o, true))}
+                    </div>
                   ) : (
-                    <>
-                      {selectedPrograms.map((p) => (
-                        <div className="coverage" key={p.id}>
-                          <Icon name="book" />
-                          <span>{p.name}</span>
-                          <b>
-                            {entries.some((o) =>
-                              o.benefits.some(
-                                (b) =>
-                                  b.program_id === p.id && b.kind === "bvi",
-                              ),
-                            )
-                              ? "Есть ориентир БВИ на 2026"
-                              : "Нет проверенной связи"}
-                          </b>
-                        </div>
-                      ))}
-                      <div className="track-list">
-                        {entries.map((o) => {
-                          const item = track.find(
-                            (t) => t.olympiad_id === o.id,
-                          )!;
-                          return (
-                            <article className="track-card" key={o.id}>
-                              <div className="track-card-heading">
-                                <span className={`subject-icon ${o.subject}`}>
-                                  {o.subject === "math" ? "∑" : "</>"}
-                                </span>
-                                <div>
-                                  <small>{o.name}</small>
-                                  <h3>{o.profile}</h3>
-                                </div>
-                                <span
-                                  className={`tag ${item.status === "registered" ? "green" : ""}`}
-                                >
-                                  {statuses[item.status]}
-                                </span>
-                              </div>
-                              <div className="progress-line">
-                                {["В плане", "Регистрация", "Участие"].map(
-                                  (label, i) => (
-                                    <span
-                                      className={
-                                        i <=
-                                        [
-                                          "planned",
-                                          "registered",
-                                          "completed",
-                                        ].indexOf(item.status)
-                                          ? "done"
-                                          : ""
-                                      }
-                                      key={label}
-                                    >
-                                      <i>{i + 1}</i>
-                                      {label}
-                                    </span>
-                                  ),
-                                )}
-                              </div>
-                              <p className="muted">
-                                {item.status === "completed"
-                                  ? "Участие отмечено. Эта отметка не подтверждает получение диплома."
-                                  : o.kind === "vsosh"
-                                    ? "Ближайший шаг: уточни у координатора своей школы дату и порядок участия."
-                                    : registration(o, now).closed
-                                      ? "Общая регистрация закрыта. Если ты уже зарегистрировался, отметь это и проверь расписание этапа."
-                                      : "Ближайший шаг: проверь официальный сайт и зарегистрируйся."}
-                              </p>
-                              <div className="track-actions">
-                                <button
-                                  className="button secondary"
-                                  onClick={() => setDetail(o)}
-                                >
-                                  Условия и сроки
-                                </button>
-                                <label className="status-select">
-                                  Мой статус
-                                  <select
-                                    aria-label={`Статус: ${o.name}, ${o.profile}`}
-                                    value={item.status}
-                                    disabled={busy}
-                                    onChange={(e) =>
-                                      change(o.id, e.target.value)
-                                    }
-                                  >
-                                    {Object.entries(statuses).map(
-                                      ([value, label]) => (
-                                        <option key={value} value={value}>
-                                          {label}
-                                        </option>
-                                      ),
-                                    )}
-                                  </select>
-                                </label>
-                                <button
-                                  className="text-button danger"
-                                  disabled={busy}
-                                  onClick={() => change(o.id)}
-                                >
-                                  Убрать
-                                </button>
-                              </div>
-                              {catalog.demo_enabled && (
-                                <details className="demo-controls">
-                                  <summary>
-                                    Проверить напоминания · тестовые события
-                                  </summary>
-                                  <p>
-                                    Реальные сроки и правила останутся прежними.
-                                    В MAX сообщение придёт с учётом тихих часов.
-                                  </p>
-                                  <div>
-                                    <button
-                                      disabled={
-                                        busy || item.status !== "planned"
-                                      }
-                                      onClick={() => demo(o.id, "registration")}
-                                    >
-                                      Тест регистрации
-                                    </button>
-                                    <button
-                                      disabled={
-                                        busy || item.status === "completed"
-                                      }
-                                      onClick={() => demo(o.id, "rule_change")}
-                                    >
-                                      Тест изменения правила
-                                    </button>
-                                  </div>
-                                </details>
-                              )}
-                            </article>
-                          );
-                        })}
-                      </div>
-                    </>
+                    <div className="empty">
+                      <Icon name="route" size={36} />
+                      <h2>Начни с одной олимпиады</h2>
+                      <p>
+                        В маршруте будут твои этапы и отметки о регистрации.
+                      </p>
+                      <button
+                        className="button primary"
+                        onClick={() => setTab("discover")}
+                      >
+                        Выбрать олимпиаду
+                      </button>
+                    </div>
                   )}
                 </>
               )}
               {tab === "calendar" && (
                 <>
-                  <PageTitle
-                    eyebrow="НЕ ПРОПУСТИ СВОЙ ШАНС"
-                    title="Календарь маршрута"
-                    text={`Сроки выбранных олимпиад · ${tz}. Если дата неизвестна, мы не подставляем примерную.`}
-                  />
-                  {!entries.length ? (
-                    <Empty
-                      title="Добавь события в свой календарь"
-                      text="Выбери олимпиаду — её опубликованные этапы появятся здесь автоматически."
-                      action={() => setTab("discover")}
-                    />
-                  ) : (
-                    <div className="timeline">
-                      {calendarEvents.map((e) => (
-                        <article
-                          className="timeline-event"
-                          key={`${e.olympiad.id}-${e.id}`}
-                        >
-                          <span className="timeline-point" />
-                          <div className="event-date">
-                            {e.deadline
-                              ? date(e.deadline, tz)
-                              : "Дата уточняется"}
-                            {e.deadline && Date.parse(e.deadline) < now && (
-                              <span className="tag">Срок прошёл</span>
-                            )}
-                            {conflicts.has(e.olympiad.id) && (
-                              <span className="tag orange-tag">
-                                Пересечение сроков
-                              </span>
-                            )}
-                          </div>
-                          <div>
-                            <small>
-                              {e.olympiad.name} · {e.olympiad.profile}
-                            </small>
-                            <h3>{e.title}</h3>
-                            <p className="muted">{e.source.note}</p>
-                            <button
-                              className="text-button"
-                              onClick={() => openSource(e.source.url)}
-                            >
-                              Проверить у организатора{" "}
-                              <Icon name="external" size={15} />
-                            </button>
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-              {tab === "notifications" && (
-                <>
-                  <PageTitle
-                    eyebrow="ВАЖНОЕ — ВОВРЕМЯ"
-                    title="Напоминания"
-                    text="Конкретное событие, понятное действие. Всё связано с твоим маршрутом."
-                  />
-                  <div className="notification-settings">
-                    <span className="mini-icon">
-                      <Icon name="bell" />
-                    </span>
+                  <div className="page-heading">
                     <div>
-                      <strong>
-                        {me?.profile.notifications_enabled
-                          ? "Напоминания включены"
-                          : "Напоминания пока отключены"}
-                      </strong>
+                      <span className="label">СРОКИ ТВОЕГО МАРШРУТА</span>
+                      <h1>Календарь</h1>
                       <p>
-                        {me
-                          ? `Тихие часы: ${me.profile.quiet_start}:00–${me.profile.quiet_end}:00 · ${tz}`
-                          : "Войди и настрой удобное время."}
+                        Время: {tz}. События без точного срока показаны
+                        отдельно.
                       </p>
                     </div>
-                    <button
-                      className="text-button"
-                      onClick={() => (me ? setEditing(true) : void login())}
-                    >
-                      Настроить <Icon name="arrow" size={16} />
-                    </button>
                   </div>
-                  {notifications.length === 0 ? (
-                    <Empty
-                      title="Здесь будет только важное"
-                      text="Добавь олимпиады в маршрут и включи напоминания. Для проверки доступно тестовое событие в карточке маршрута."
-                      action={() => setTab("track")}
-                      label="К моему маршруту"
-                    />
+                  {!events.length ? (
+                    <div className="empty">
+                      <h2>Пока нет событий</h2>
+                      <p>
+                        Добавь олимпиаду в маршрут — здесь появится её
+                        расписание.
+                      </p>
+                      <button
+                        className="button primary"
+                        onClick={() => setTab("discover")}
+                      >
+                        Выбрать олимпиаду
+                      </button>
+                    </div>
                   ) : (
-                    <div className="message-list">
-                      {notifications.map((n) => (
-                        <article className="message-card" key={n.id}>
-                          <div className="message-meta">
-                            <span className="tag">
-                              {n.is_demo
-                                ? "ТЕСТОВОЕ СОБЫТИЕ"
-                                : "СОБЫТИЕ МАРШРУТА"}
-                            </span>
-                            <span>{delivery[n.state] || n.state}</span>
-                          </div>
-                          <h3>{n.title}</h3>
-                          <p>{n.text}</p>
-                          <small>
-                            {date(n.due_at, tz)}
-                            {n.error && ` · ${n.error}`}
-                          </small>
-                          {["preview", "sent"].includes(n.state) && (
-                            <div className="message-actions">
-                              {(n.kind === "registration"
-                                ? [
-                                    ["registered", "Я зарегистрировался"],
-                                    ["snooze", "Через час"],
-                                    ["remove", "Убрать из трека"],
-                                  ]
-                                : [
-                                    ["read", "Ознакомился"],
-                                    ["snooze", "Через час"],
-                                  ]
-                              ).map(([action, label]) => (
-                                <button
-                                  key={action}
-                                  disabled={busy}
-                                  onClick={() =>
-                                    void run(async () => {
-                                      await api.action(n.id, action);
-                                      await refresh();
-                                      setToast("Действие сохранено");
-                                    })
-                                  }
-                                >
-                                  {label}
-                                </button>
-                              ))}
+                    <div className="event-list">
+                      {events.map((e) => {
+                        const stamp = e.deadline || e.starts_at;
+                        return (
+                          <article
+                            className={`event-row ${stamp && Date.parse(stamp) < now ? "past" : ""}`}
+                            key={`${e.olympiad.id}-${e.id}`}
+                          >
+                            <div className="event-date">
+                              {stamp ? date(stamp, tz) : "Дата уточняется"}
+                              {stamp && Date.parse(stamp) < now && (
+                                <small>Прошедшее событие</small>
+                              )}
                             </div>
-                          )}
-                        </article>
-                      ))}
+                            <div>
+                              <h2>{e.title}</h2>
+                              <p>
+                                {e.olympiad.name} · {e.olympiad.profile}
+                              </p>
+                              <small>{e.source.note}</small>
+                            </div>
+                            <button
+                              className="icon-button"
+                              aria-label={`Источник: ${e.title}`}
+                              onClick={() => openSource(e.source.url)}
+                            >
+                              <Icon name="external" />
+                            </button>
+                          </article>
+                        );
+                      })}
                     </div>
                   )}
                 </>
               )}
               {tab === "profile" && (
                 <>
-                  <PageTitle
-                    eyebrow="МАРШРУТ ПОД ТЕБЯ"
-                    title="Мой профиль"
-                    text="Цель можно поменять. Твой план и отметки сохранятся."
-                  />
-                  {me ? (
-                    <div className="profile-panel">
-                      <ProfileForm
-                        key={me.id}
-                        initial={me.profile}
-                        catalog={catalog}
-                        save={save}
-                        busy={busy}
-                        isDemo={me.is_demo}
-                      />
-                      <div className="delete-zone">
-                        <h3>Твои данные под твоим контролем</h3>
-                        <p>
-                          Удаление очистит профиль, маршрут, историю сообщений и
-                          все сессии.
-                        </p>
-                        <button
-                          className="text-button danger"
-                          onClick={() => setDeleting(true)}
-                        >
-                          Удалить профиль
-                        </button>
-                      </div>
+                  <div className="page-heading">
+                    <div>
+                      <span className="label">НАСТРОЙКИ МАРШРУТА</span>
+                      <h1>Мой профиль</h1>
+                      <p>
+                        Класс и программы помогают выбрать подходящие олимпиады.
+                      </p>
                     </div>
+                  </div>
+                  {me ? (
+                    <>
+                      <div className="profile-panel">
+                        <ProfileForm
+                          key={`${me.id}-${me.profile.grade}-${me.profile.program_ids.join(",")}`}
+                          initial={me.profile}
+                          catalog={catalog}
+                          save={save}
+                          busy={busy}
+                        />
+                      </div>
+                      <button
+                        className="text-button destructive"
+                        onClick={() => setDeleting(true)}
+                      >
+                        Удалить профиль
+                      </button>
+                    </>
                   ) : (
-                    <Empty
-                      title="Начнём с твоей цели"
-                      text="Нужны только класс, год поступления и интересующие программы."
-                      action={() => void login()}
-                      label="Создать профиль"
-                    />
+                    <div className="empty">
+                      <p>Настрой цели, чтобы сохранять маршрут.</p>
+                      <button
+                        className="button primary"
+                        onClick={() => void login()}
+                      >
+                        Собрать маршрут
+                      </button>
+                    </div>
                   )}
                 </>
               )}
-              <footer className="page-footer">
-                <span>
-                  маршрут <i>·</i> шаг за шагом к своему вузу
-                </span>
-                <span>Проверка источников: {catalog.snapshot_date}</span>
-              </footer>
             </>
           )}
+          <footer>
+            Маршрут <span>Олимпиадный навигатор в MAX</span>
+          </footer>
         </main>
       </div>
       {toast && (
-        <div role="status" className="toast">
-          <Icon name="check" />
+        <div className="toast" role="status">
+          <Icon name="check" size={18} />
           {toast}
         </div>
       )}
       {editing && me && catalog && (
         <Dialog
-          error={error}
           title="Настроим твой маршрут"
           close={() => setEditing(false)}
+          error={error}
         >
           <ProfileForm
             initial={me.profile}
             catalog={catalog}
             save={save}
             busy={busy}
-            isDemo={me.is_demo}
           />
         </Dialog>
       )}
       {deleting && (
         <Dialog
-          error={error}
           title="Удалить профиль?"
           close={() => setDeleting(false)}
+          error={error}
         >
           <p>
-            Трек, отметки и история будут удалены. Напоминания остановятся. Это
-            действие нельзя отменить.
+            Маршрут, отметки и история будут удалены. Напоминания в чате
+            остановятся.
           </p>
           <div className="dialog-actions">
             <button
               className="button secondary"
               onClick={() => setDeleting(false)}
             >
-              Сохранить профиль
+              Отмена
             </button>
             <button
               className="button destructive"
@@ -1306,7 +900,6 @@ function App() {
                   session.clear();
                   setMe(null);
                   setTrack([]);
-                  setNotifications([]);
                   setDeleting(false);
                   setTab("discover");
                   setToast("Профиль удалён");
@@ -1320,80 +913,68 @@ function App() {
       )}
       {detail && catalog && (
         <Dialog
-          error={error}
-          title={detail.profile}
+          title={`${detail.name} · ${detail.profile}`}
           close={() => setDetail(null)}
+          error={error}
         >
-          <div className="detail-intro">
-            <span className="tag">
-              {detail.kind === "vsosh" ? "ВсОШ" : "Перечневая олимпиада"}
-            </span>
-            <span className="tag">{detail.grades.join(", ")} классы</span>
-            <h3>{detail.name}</h3>
-            <p>{detail.description}</p>
-          </div>
-          <div className="notice">
-            <Icon name="info" />
-            <span>
-              Условия ниже относятся к приёму 2026 года. Они не подтверждают
-              льготу при поступлении в {me?.profile.admission_year || 2027}{" "}
-              году. БВИ и 100 баллов — разные льготы.
-            </span>
-          </div>
-          <h3>Какие возможности открывает</h3>
-          {detail.benefits
-            .filter(
-              (b) =>
-                !selectedPrograms.length ||
-                selectedPrograms.some((p) => p.id === b.program_id),
-            )
-            .map((b) => (
-              <div className="benefit-detail" key={b.program_id}>
-                <div>
-                  <strong>
-                    {catalog.programs.find((p) => p.id === b.program_id)?.name}
-                  </strong>
-                  <span
-                    className={`tag ${b.kind !== "unknown" ? "green" : ""}`}
-                  >
-                    {b.kind === "bvi"
-                      ? "БВИ · 2026"
-                      : b.kind === "100"
-                        ? "100 баллов · 2026"
-                        : "Нужна проверка"}
-                  </span>
-                </div>
-                <dl>
-                  <dt>Результат</dt>
-                  <dd>{b.result}</dd>
-                  <dt>Подтверждение</dt>
-                  <dd>{b.confirmation}</dd>
-                </dl>
-                <p className="small muted">{b.explanation}</p>
-                <button
-                  className="text-button"
-                  onClick={() => openSource(b.source.url)}
+          <p>{detail.description}</p>
+          <p className="inline-note">
+            Условия ниже относятся к приёму 2026 года. Они не подтверждают
+            льготу при поступлении в{" "}
+            {me?.profile.admission_year || graduationYear(11)} году. БВИ и 100
+            баллов — разные льготы.
+          </p>
+          <h3>Условия поступления</h3>
+          {benefits(detail).map((b) => (
+            <section className="benefit-detail" key={b.program_id}>
+              <div className="benefit-head">
+                <strong>
+                  {
+                    catalog.programs.find((p) => p.id === b.program_id)
+                      ?.university
+                  }{" "}
+                  · {catalog.programs.find((p) => p.id === b.program_id)?.name}
+                </strong>
+                <span
+                  className={`status ${b.kind !== "unknown" ? "open" : ""}`}
                 >
-                  Официальное правило <Icon name="external" size={15} />
-                </button>
-                <small className="source-caption">
-                  {b.source.note} Проверено: {b.source.checked_at}
-                </small>
+                  {b.kind === "bvi"
+                    ? "БВИ · 2026"
+                    : b.kind === "100"
+                      ? "100 баллов · 2026"
+                      : "Нужна проверка"}
+                </span>
               </div>
-            ))}
-          <h3>Сроки и ближайшие действия</h3>
+              <dl>
+                <dt>Диплом</dt>
+                <dd>{b.result}</dd>
+                <dt>Подтверждение</dt>
+                <dd>{b.confirmation}</dd>
+              </dl>
+              <p className="muted">{b.explanation}</p>
+              <button
+                className="text-button"
+                onClick={() => openSource(b.source.url)}
+              >
+                Источник <Icon name="external" size={15} />
+              </button>
+              <small>
+                {b.source.note} Проверено: {b.source.checked_at}
+              </small>
+            </section>
+          ))}
+          <h3>Сроки и этапы</h3>
           {detail.events.map((e) => (
             <div className="detail-event" key={e.id}>
-              <Icon name="calendar" />
-              <div>
-                <strong>{e.title}</strong>
-                <p>
-                  {e.deadline
-                    ? date(e.deadline, tz)
-                    : "Точная дата ещё не проверена"}
-                </p>
-                <small>{e.source.note}</small>
-              </div>
+              <strong>{e.title}</strong>
+              <p>
+                {e.deadline
+                  ? date(e.deadline, tz)
+                  : e.starts_at
+                    ? date(e.starts_at, tz)
+                    : "Точная дата ещё не опубликована"}
+              </p>
+              <small>{e.source.note}</small>
             </div>
           ))}
           <div className="dialog-actions">
@@ -1407,62 +988,18 @@ function App() {
               className="button primary"
               disabled={busy || track.some((t) => t.olympiad_id === detail.id)}
               onClick={() => {
-                const item = detail;
+                const o = detail;
                 setDetail(null);
-                add(item);
+                add(o);
               }}
             >
               {track.some((t) => t.olympiad_id === detail.id)
                 ? "Уже в маршруте"
                 : "Добавить в маршрут"}
-              <Icon name="plus" size={18} />
             </button>
           </div>
         </Dialog>
       )}
-    </div>
-  );
-}
-
-function PageTitle({
-  eyebrow,
-  title,
-  text,
-}: {
-  eyebrow: string;
-  title: string;
-  text: string;
-}) {
-  return (
-    <div className="page-title">
-      <span className="eyebrow">{eyebrow}</span>
-      <h1>{title}</h1>
-      <p>{text}</p>
-    </div>
-  );
-}
-function Empty({
-  title,
-  text,
-  action,
-  label = "Найти олимпиаду",
-}: {
-  title: string;
-  text: string;
-  action: () => void;
-  label?: string;
-}) {
-  return (
-    <div className="empty">
-      <span className="empty-icon">
-        <Icon name="route" size={34} />
-      </span>
-      <h2>{title}</h2>
-      <p>{text}</p>
-      <button className="button primary" onClick={action}>
-        {label}
-        <Icon name="arrow" size={17} />
-      </button>
     </div>
   );
 }

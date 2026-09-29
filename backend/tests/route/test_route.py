@@ -460,3 +460,161 @@ def test_max_handlers_share_state_with_api_and_stop_reminders(client, settings):
         client.get("/api/v1/me", headers=headers).json()["profile"]["notifications_enabled"]
         is False
     )
+
+
+def test_graduation_year_is_derived_and_cannot_be_overridden(client):
+    from datetime import datetime
+
+    from app.route.schemas import admission_year_for_grade
+
+    assert admission_year_for_grade(11, datetime(2026, 9, 1)) == 2027
+    assert admission_year_for_grade(10, datetime(2027, 2, 1)) == 2028
+    assert admission_year_for_grade(9, datetime(2026, 8, 31)) == 2028
+    headers = login(client)
+    profile = setup_profile(client, headers)
+    profile.update(grade=9, admission_year=2035)
+    saved = client.put("/api/v1/me", headers=headers, json=profile)
+    assert saved.status_code == 200
+    assert saved.json()["profile"]["admission_year"] == admission_year_for_grade(9)
+
+
+def test_chat_onboarding_and_actions_without_miniapp(client, settings):
+    from types import SimpleNamespace
+
+    from maxapi.enums import UpdateType
+
+    from app.bot.handlers.route import create_route_router
+
+    async def run():
+        database = Database(settings.database)
+        handlers = {
+            h.update_type: h.func_event
+            for h in create_route_router(database, settings).event_handlers
+        }
+
+        async def send(text, user_id=777):
+            answer = AsyncMock()
+            event = SimpleNamespace(
+                message=SimpleNamespace(
+                    sender=SimpleNamespace(user_id=user_id),
+                    recipient=SimpleNamespace(chat_type="dialog"),
+                    body=SimpleNamespace(text=text),
+                    answer=answer,
+                )
+            )
+            await handlers[UpdateType.MESSAGE_CREATED](event)
+            return answer.call_args.kwargs["text"]
+
+        assert "Маршрут" in await send("/start")
+        assert "согласием" in await send("/resume")
+        assert "9 класс" in await send("/grade 9")
+        await send("/goal hse-pmi")
+        assert "сохранён" in await send("/save")
+        assert "включены" in await send("/resume")
+        assert "Физтех" in await send("/add fiztech-math")
+        assert "Физтех" in await send("/track")
+        assert "не проверено" in await send("/show fiztech-math")
+        assert "Регистрация отмечена" in await send("/registered fiztech-math")
+        assert "пуст" in await send("/track", user_id=778)
+        assert "Удалить" in await send("/remove fiztech-math")
+        assert "Физтех" in await send("/track")  # confirmation required
+        assert "Удалено" in await send("/confirm-remove fiztech-math")
+        assert "пуст" in await send("/track")
+        assert "отключены" in await send("/stop")
+        await database.close()
+
+    asyncio.run(run())
+    headers = login(client, 777)
+    profile = client.get("/api/v1/me", headers=headers).json()["profile"]
+    assert profile["grade"] == 9
+    assert profile["program_ids"] == ["hse-pmi"]
+    assert profile["consent"] is True
+    assert profile["notifications_enabled"] is False
+
+
+def test_chat_buttons_apply_to_clicker_only_and_ignore_groups(client, settings):
+    from types import SimpleNamespace
+
+    from maxapi.enums import UpdateType
+
+    from app.bot.handlers.route import create_route_router
+
+    owner = login(client, 111)
+    other = login(client, 222)
+    setup_profile(client, owner)
+    setup_profile(client, other)
+    client.put("/api/v1/track/vsosh-math", headers=owner)
+
+    async def run():
+        database = Database(settings.database)
+        handlers = {
+            h.update_type: h.func_event
+            for h in create_route_router(database, settings).event_handlers
+        }
+        bot = SimpleNamespace(send_message=AsyncMock())
+        event = SimpleNamespace(
+            callback=SimpleNamespace(
+                payload="chat:registered vsosh-math", user=SimpleNamespace(user_id=222)
+            ),
+            message=SimpleNamespace(recipient=SimpleNamespace(chat_type="dialog")),
+            answer=AsyncMock(),
+            bot=bot,
+        )
+        await handlers[UpdateType.MESSAGE_CALLBACK](event)
+        assert "удалена" in bot.send_message.call_args.kwargs["text"]
+        bot.send_message.reset_mock()
+        event.message.recipient.chat_type = "chat"
+        await handlers[UpdateType.MESSAGE_CALLBACK](event)
+        bot.send_message.assert_not_awaited()
+        await database.close()
+
+    asyncio.run(run())
+    assert client.get("/api/v1/track", headers=owner).json()["items"][0]["status"] == "planned"
+
+
+def test_chat_stop_resume_restores_only_unsent_future_reminders(client, settings):
+    from datetime import UTC, datetime
+
+    from app.bot.chat import respond
+    from app.db.models.route import Student
+
+    headers = login(client, 123)
+    setup_profile(client, headers)
+    olympiad = BY_ID["vsosh-math"]
+    event = Event(
+        id="future",
+        title="Registration",
+        kind="registration",
+        deadline=datetime.fromtimestamp(time.time() + 12 * 86400, UTC).isoformat(),
+        source=olympiad.source,
+    )
+    with patch.object(olympiad, "events", [event]):
+        client.put("/api/v1/track/vsosh-math", headers=headers)
+
+        async def run():
+            database = Database(settings.database)
+            async with database.session_factory() as db:
+                user = await db.get(Student, "max:123")
+                assert user is not None
+                await respond(db, user, "/stop", True)
+                await respond(db, user, "/resume", True)
+            await database.close()
+
+        asyncio.run(run())
+        jobs = client.get("/api/v1/notifications", headers=headers).json()["items"]
+        assert len(jobs) == 2
+        assert all(j["state"] == "pending" for j in jobs)
+
+
+def test_miniapp_profile_edit_preserves_chat_notification_settings(client):
+    headers = login(client, 123)
+    profile = setup_profile(client, headers)
+    for key in ("notifications_enabled", "quiet_start", "quiet_end"):
+        del profile[key]
+    profile["grade"] = 11
+    response = client.put("/api/v1/me", headers=headers, json=profile)
+    assert response.status_code == 200
+    saved = response.json()["profile"]
+    assert saved["notifications_enabled"] is True
+    assert saved["quiet_start"] == 0
+    assert saved["quiet_end"] == 0

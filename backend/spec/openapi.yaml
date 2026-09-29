@@ -762,6 +762,10 @@ components:
         description:
           type: string
           title: Description
+        url:
+          type: string
+          title: Url
+          default: https://ba.hse.ru/
       type: object
       required:
         - id

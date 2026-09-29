@@ -1,7 +1,15 @@
-from typing import Literal
+from datetime import datetime
+from typing import Literal, Self
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+
+def admission_year_for_grade(grade: int, today: datetime | None = None) -> int:
+    today = today or datetime.now(ZoneInfo("Europe/Moscow"))
+    # The school year begins in September. During summer use the completed grade.
+    graduation_year = today.year + (1 if today.month >= 9 else 0)
+    return graduation_year + 11 - grade
 
 
 class Source(BaseModel):
@@ -18,6 +26,7 @@ class Program(BaseModel):
     university: str = "НИУ ВШЭ"
     campus: str = "Москва"
     description: str
+    url: str = "https://ba.hse.ru/"
 
 
 class Benefit(BaseModel):
@@ -77,6 +86,11 @@ class Profile(BaseModel):
     quiet_start: int = Field(default=22, ge=0, le=23)
     quiet_end: int = Field(default=8, ge=0, le=23)
     consent: bool = False
+
+    @model_validator(mode="after")
+    def derive_admission_year(self) -> Self:
+        self.admission_year = admission_year_for_grade(self.grade)
+        return self
 
     @field_validator("timezone")
     @classmethod

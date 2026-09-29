@@ -34,6 +34,7 @@ from app.route.service import (
     delete_profile,
     describe_notification,
     list_track,
+    lock_student,
     save_profile,
 )
 
@@ -114,6 +115,14 @@ async def me(user: UserDep) -> Me:
 
 @router.put("/me", response_model=Me, operation_id="saveProfile")
 async def profile(body: Profile, user: UserDep, db: DbSessionDep) -> Me:
+    # A mini-app edit must not overwrite settings changed in the chat meanwhile.
+    stored = Profile(**(await lock_student(db, user.id)).profile)
+    preserved = {
+        key: getattr(stored, key)
+        for key in ("notifications_enabled", "quiet_start", "quiet_end")
+        if key not in body.model_fields_set
+    }
+    body = Profile(**{**body.model_dump(), **preserved})
     return describe_user(await save_profile(db, user.id, body))
 
 

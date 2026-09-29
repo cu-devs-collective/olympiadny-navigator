@@ -1,4 +1,4 @@
-"""Small editorial snapshot. Unknown rules/dates are deliberately not inferred."""
+"""Editorial snapshot of real olympiads. Unknown rules and dates are not inferred."""
 
 from typing import Literal
 
@@ -149,6 +149,146 @@ OLYMPIADS = [
         for subject, profile in VP_PROFILES
     ],
 ]
+# Dates below are a manually checked snapshot, not a live organizer feed.
+MIPT = Source(
+    url="https://olymp-online.mipt.ru/",
+    title="Физтех · расписание 2026/27",
+    note="Для первого тура нужны регистрация и подтверждение данных до 10 октября, 10:00 мск.",
+)
+LOMONOSOV = Source(
+    url="https://olymp.msu.ru/",
+    title="Ломоносов · официальный сайт МГУ",
+    note="Анонс 23.09.2026: регистрация во второй половине октября. Точный график ожидается.",
+)
+ROSATOM = Source(
+    url="https://olymp.mephi.ru/rosatom/stages/qualification",
+    title="Росатом · отборочный этап",
+    note="Интернет-тур 17 ноября — 21 декабря 2026. Точное время окончания не опубликовано.",
+)
+OLYMPIADS.extend(
+    [
+        Olympiad(
+            id="fiztech-math",
+            name="Физтех",
+            profile="Математика",
+            subject="math",
+            kind="listed",
+            grades=[9, 10, 11],
+            source=MIPT,
+            registration_url=MIPT.url,
+            description="Олимпиада МФТИ. Онлайн-отбор с письменными решениями и очный финал.",
+            benefits=[unknown_benefit(p.id) for p in PROGRAMS],
+            events=[
+                Event(
+                    id="registration-1",
+                    title="Регистрация и подтверждение данных · I тур",
+                    kind="registration",
+                    starts_at="2026-09-07T10:00:00+03:00",
+                    deadline="2026-10-10T10:00:00+03:00",
+                    source=MIPT,
+                ),
+                Event(
+                    id="qualifier-1",
+                    title="Начало I тура",
+                    kind="stage",
+                    starts_at="2026-10-11T10:00:00+03:00",
+                    deadline="2026-10-11T10:00:00+03:00",
+                    source=MIPT,
+                ),
+                Event(
+                    id="qualifier-2",
+                    title="Начало II тура (если не прошли I тур)",
+                    kind="stage",
+                    starts_at="2026-11-01T08:00:00+03:00",
+                    source=MIPT,
+                ),
+            ],
+        ),
+        *[
+            Olympiad(
+                id=f"lomonosov-{subject}",
+                name="Ломоносов",
+                profile=profile,
+                subject=subject,
+                kind="listed",
+                grades=[9, 10, 11],
+                source=LOMONOSOV,
+                registration_url=LOMONOSOV.url,
+                description="Олимпиада МГУ: дистанционный отбор и заключительный этап по профилю.",
+                benefits=[unknown_benefit(p.id) for p in PROGRAMS],
+                events=[
+                    Event(
+                        id="registration",
+                        title="Регистрация · вторая половина октября",
+                        kind="registration",
+                        source=LOMONOSOV,
+                    )
+                ],
+            )
+            for subject, profile in VP_PROFILES
+        ],
+        Olympiad(
+            id="rosatom-math",
+            name="Росатом",
+            profile="Математика",
+            subject="math",
+            kind="listed",
+            grades=[9, 10, 11],
+            source=ROSATOM,
+            registration_url="https://org.mephi.ru/",
+            description="Олимпиада НИЯУ МИФИ. Можно выбрать дистанционный отборочный тур.",
+            benefits=[unknown_benefit(p.id) for p in PROGRAMS],
+            events=[
+                Event(
+                    id="online",
+                    title="Интернет-тур · 17 ноября — 21 декабря",
+                    kind="stage",
+                    source=ROSATOM,
+                )
+            ],
+        ),
+    ]
+)
+PROGRAMS.extend(
+    [
+        Program(
+            id="itmo-ct",
+            name="Компьютерные технологии",
+            short_name="КТ",
+            university="Университет ИТМО",
+            campus="Санкт-Петербург",
+            description="Направление 01.03.02: прикладная математика и информатика.",
+            url="https://abit.itmo.ru/programs/bachelor",
+        ),
+        Program(
+            id="itmo-software",
+            name="Системное и прикладное программное обеспечение",
+            short_name="СППО",
+            university="Университет ИТМО",
+            campus="Санкт-Петербург",
+            description="Направление 09.03.04: программная инженерия.",
+            url="https://abit.itmo.ru/program/bachelor/system_software",
+        ),
+    ]
+)
+# A real program is not evidence of any particular olympiad admission benefit.
+for olympiad in OLYMPIADS:
+    for program in PROGRAMS[2:]:
+        olympiad.benefits.append(
+            Benefit(
+                program_id=program.id,
+                kind="unknown",
+                result="Условия связи не проверены",
+                confirmation="Нужно проверить профиль диплома, класс и подтверждение ЕГЭ.",
+                explanation="Программа есть в каталоге ИТМО. БВИ по олимпиаде не подтверждено.",
+                source=Source(
+                    url=program.url,
+                    title=f"ИТМО · {program.short_name}",
+                    note="Источник подтверждает программу, а не олимпиадную льготу.",
+                ),
+            )
+        )
+
 BY_ID = {item.id: item for item in OLYMPIADS}
 
 

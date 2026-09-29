@@ -5,6 +5,7 @@ import loguru
 import maxapi
 from maxapi.client.default import DefaultConnectionProperties
 from maxapi.enums import UpdateType
+from maxapi.types import BotCommand
 
 from app.bot.dispatcher import create_dispatcher
 from app.bot.notifications import notification_loop
@@ -98,6 +99,26 @@ async def run_bot(settings: Settings | None = None) -> None:
         if not bot_settings.username:
             info = await bot.get_me()
             bot_settings.username = info.username or ""
+        try:
+            await bot.set_commands(
+                *[
+                    BotCommand(name=name, description=description)
+                    for name, description in [
+                        ("start", "Меню маршрута"),
+                        ("profile", "Класс и программы вузов"),
+                        ("catalog", "Найти олимпиаду"),
+                        ("track", "Мой маршрут и отметки"),
+                        ("deadlines", "Ближайшие сроки"),
+                        ("settings", "Сообщения и тихие часы"),
+                        ("stop", "Отключить напоминания"),
+                        ("help", "Помощь"),
+                    ]
+                ]
+            )
+            loguru.logger.info("Chat command menu registered")
+        except Exception:
+            # Commands still work as text if MAX cannot update its menu right now.
+            loguru.logger.warning("Could not register chat command menu")
         dispatcher = create_dispatcher(database, settings)
         worker = asyncio.create_task(notification_loop(database, bot, settings))
         if bot_settings.mode is BotMode.WEBHOOK:

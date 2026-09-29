@@ -394,6 +394,10 @@ export type Program = {
      * Description
      */
     description: string;
+    /**
+     * Url
+     */
+    url?: string;
 };
 
 /**
