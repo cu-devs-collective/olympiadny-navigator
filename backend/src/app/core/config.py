@@ -145,6 +145,7 @@ class Settings(pydantic_settings.BaseSettings):
     database: DatabaseSettings | None = None
     bot: BotSettings | None = None
     demo_enabled: bool = False
+    jury_api_token: pydantic.SecretStr | None = None
     session_ttl_seconds: int = pydantic.Field(default=86400, ge=60, le=604800)
     init_data_ttl_seconds: int = pydantic.Field(default=3600, ge=60, le=86400)
     scheduler_interval_seconds: int = pydantic.Field(default=15, ge=1)

@@ -93,6 +93,45 @@ pnpm dev
 
 Vite откроет http://localhost:5173 и направит запросы `/api` на `localhost:8000`. Для запуска бота отдельно выполните `uv run bot` из `backend/` с настроенным токеном.
 
+## Доступ к API для жюри
+
+Для ручной проверки выдан отдельный Bearer-токен. Его можно вставить в **Authorize** на
+[странице API](https://max-hackathon.centraluniversity.dev/api/docs), без префикса `Bearer`.
+Вход через MAX и запрос `/auth/demo` не нужны.
+
+```bash
+export JURY_API_TOKEN='вставьте выданный токен'
+API=https://max-hackathon.centraluniversity.dev/api/v1
+
+curl "$API/me" -H "Authorization: Bearer $JURY_API_TOKEN"
+
+curl -X PUT "$API/track/vsosh-math" \
+  -H "Authorization: Bearer $JURY_API_TOKEN"
+
+curl -X PATCH "$API/track/vsosh-math" \
+  -H "Authorization: Bearer $JURY_API_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"status":"registered"}'
+
+curl "$API/track" -H "Authorization: Bearer $JURY_API_TOKEN"
+```
+
+Токен открывает отдельный тестовый профиль, общий для всех проверяющих с этим токеном.
+При первом запросе он создаётся с 10 классом и программой ПМИ ВШЭ. Профиль можно менять
+через `PUT /me`. Данные пользователей MAX недоступны, сообщения в MAX не отправляются.
+Каталог доступен без токена: `GET /catalog`.
+
+`DELETE /me` сбрасывает тестовый профиль вместе с отметками и уведомлениями. Следующий
+запрос с тем же токеном создаст его заново. Для проверки уведомлений доступен
+`POST /demo/events` с телом `{"olympiad_id":"vsosh-math","kind":"registration"}`;
+сначала добавьте олимпиаду в список, оставив статус `planned`. Тестовые уведомления
+в профиле жюри включены по умолчанию. Этот запрос требует `APP_DEMO_ENABLED=true`.
+
+На сервере токен задан в `APP_JURY_API_TOKEN`, в репозиторий его значение не включается.
+Пустое значение отключает этот способ входа. Для замены или отключения измените `.env`
+и выполните `docker compose up -d api`. Токен действует до замены или отключения,
+перезапуск API не сбрасывает профиль.
+
 ## Проверки
 
 Из `backend/`:

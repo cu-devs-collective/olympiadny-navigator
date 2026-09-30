@@ -6,6 +6,7 @@ import time
 from urllib.parse import parse_qsl
 
 from sqlalchemy import delete
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.errors import ApiError
@@ -42,6 +43,26 @@ def validate_init_data(raw: str, token: str, max_age: int, now: float | None = N
 
 def describe_user(user: Student) -> Me:
     return Me(id=user.id, is_demo=user.max_user_id is None, profile=Profile(**user.profile))
+
+
+async def jury_user(db: AsyncSession) -> Student:
+    user = await db.get(Student, "jury:api")
+    if user is None:
+        user = Student(
+            id="jury:api",
+            profile=Profile(
+                program_ids=["hse-pmi"], consent=True, notifications_enabled=True
+            ).model_dump(),
+        )
+        db.add(user)
+        try:
+            await db.commit()
+        except IntegrityError:
+            await db.rollback()
+            user = await db.get(Student, "jury:api")
+            if user is None:
+                raise
+    return user
 
 
 async def issue_session(db: AsyncSession, user: Student, settings: Settings) -> SessionResponse:

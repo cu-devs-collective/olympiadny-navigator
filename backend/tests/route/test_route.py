@@ -735,3 +735,77 @@ def test_chat_deeplink_keeps_consent_and_catalog_paginates(client, settings):
         await database.close()
 
     asyncio.run(run())
+
+
+JURY_TOKEN = "jury-test-token-0123456789abcdef0123456789abcdef"
+
+
+def test_jury_token_has_a_persistent_isolated_profile(client, settings):
+    settings.jury_api_token = SecretStr(JURY_TOKEN)
+    headers = {"Authorization": f"Bearer {JURY_TOKEN}"}
+    regular = login(client, 789)
+    setup_profile(client, regular)
+    client.put("/api/v1/track/vsosh-programming", headers=regular)
+    response = client.get("/api/v1/me", headers=headers)
+    assert response.status_code == 200
+    assert response.json()["id"] == "jury:api"
+    assert response.json()["is_demo"] is True
+    assert client.get("/api/v1/track", headers=headers).json()["items"] == []
+    assert client.put("/api/v1/track/vsosh-math", headers=headers).status_code == 200
+    event = client.post(
+        "/api/v1/demo/events", headers=headers, json={"olympiad_id": "vsosh-math"}
+    ).json()
+    assert event["state"] == "preview"
+    assert client.get("/api/v1/notifications", headers=regular).json()["items"] == []
+    assert (
+        client.post(
+            f"/api/v1/notifications/{event['id']}/actions",
+            headers=regular,
+            json={"action": "registered"},
+        ).status_code
+        == 404
+    )
+    assert client.delete("/api/v1/track/vsosh-programming", headers=headers).status_code == 404
+    with TestClient(create_app(settings)) as restarted:
+        items = restarted.get("/api/v1/track", headers=headers).json()["items"]
+        assert [item["olympiad_id"] for item in items] == ["vsosh-math"]
+
+
+def test_jury_profile_can_be_reset_without_revoking_the_token(client, settings):
+    settings.jury_api_token = SecretStr(JURY_TOKEN)
+    headers = {"Authorization": f"Bearer {JURY_TOKEN}"}
+    assert client.put("/api/v1/track/vsosh-math", headers=headers).status_code == 200
+    assert client.delete("/api/v1/me", headers=headers).status_code == 200
+    response = client.get("/api/v1/me", headers=headers)
+    assert response.status_code == 200
+    assert response.json()["profile"]["program_ids"] == ["hse-pmi"]
+    assert client.get("/api/v1/track", headers=headers).json()["items"] == []
+    assert client.get("/api/v1/notifications", headers=headers).json()["items"] == []
+
+
+def test_jury_token_can_be_rotated_and_disabled(client, settings):
+    old = {"Authorization": f"Bearer {JURY_TOKEN}"}
+    assert client.get("/api/v1/me", headers=old).status_code == 401
+    settings.jury_api_token = SecretStr(JURY_TOKEN)
+    assert client.put("/api/v1/track/vsosh-math", headers=old).status_code == 200
+    settings.jury_api_token = SecretStr(JURY_TOKEN + "-rotated")
+    assert client.get("/api/v1/me", headers=old).status_code == 401
+    current = {"Authorization": f"Bearer {JURY_TOKEN}-rotated"}
+    assert len(client.get("/api/v1/track", headers=current).json()["items"]) == 1
+    settings.jury_api_token = None
+    assert client.get("/api/v1/me", headers=current).status_code == 401
+
+
+def test_jury_access_does_not_require_public_demo_login(client, settings):
+    settings.jury_api_token = SecretStr(JURY_TOKEN)
+    settings.demo_enabled = False
+    headers = {"Authorization": f"Bearer {JURY_TOKEN}"}
+    assert client.post("/api/v1/auth/demo").status_code == 403
+    assert client.get("/api/v1/me", headers=headers).status_code == 200
+    assert client.put("/api/v1/track/vsosh-math", headers=headers).status_code == 200
+    assert (
+        client.post(
+            "/api/v1/demo/events", headers=headers, json={"olympiad_id": "vsosh-math"}
+        ).status_code
+        == 403
+    )

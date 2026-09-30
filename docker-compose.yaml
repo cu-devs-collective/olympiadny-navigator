@@ -35,6 +35,9 @@ services:
 
   api:
     <<: *app
+    environment:
+      <<: *environment
+      APP_JURY_API_TOKEN: ${APP_JURY_API_TOKEN:-}
     command: ["api"]
     depends_on:
       migrate:

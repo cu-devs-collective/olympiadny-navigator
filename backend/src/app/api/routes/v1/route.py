@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import time
 from typing import Annotated
 
@@ -10,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from app.api.dependencies import DbSessionDep
 from app.api.errors import ApiError
 from app.db.models.route import LoginSession, Reminder, Student, new_id
-from app.route.auth import describe_user, issue_session, validate_init_data
+from app.route.auth import describe_user, issue_session, jury_user, validate_init_data
 from app.route.catalog import OLYMPIADS, PROGRAMS, SUBJECTS
 from app.route.schemas import (
     Catalog,
@@ -41,16 +42,25 @@ from app.route.service import (
 
 
 router = APIRouter(tags=["route"])
-bearer = HTTPBearer(auto_error=False)
+bearer = HTTPBearer(
+    auto_error=False,
+    description="Токен сессии или отдельный API-токен жюри. Введите только токен, без Bearer.",
+)
 
 
 async def current_user(
     db: DbSessionDep,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)],
+    request: Request,
 ) -> Student:
     if not credentials or credentials.scheme.lower() != "bearer":
         raise ApiError(401, "unauthorized", "Войдите через MAX или откройте демо")
     token_hash = hashlib.sha256(credentials.credentials.encode()).hexdigest()
+    jury_token = request.app.state.settings.jury_api_token
+    if jury_token and hmac.compare_digest(
+        token_hash, hashlib.sha256(jury_token.get_secret_value().encode()).hexdigest()
+    ):
+        return await jury_user(db)
     session = await db.get(LoginSession, token_hash)
     if not session or session.expires_at <= time.time():
         raise ApiError(401, "session_expired", "Сессия закончилась. Войдите заново")

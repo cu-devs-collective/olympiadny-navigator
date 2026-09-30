@@ -46,6 +46,7 @@ services:
     environment:
       <<: *app-environment
       APP_SERVER_RELOAD: "true"
+      APP_JURY_API_TOKEN: ${APP_JURY_API_TOKEN:-}
     ports:
       - "127.0.0.1:${API_PORT:-8000}:8000"
     depends_on:

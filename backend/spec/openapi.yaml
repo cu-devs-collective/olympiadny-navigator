@@ -1008,6 +1008,7 @@ components:
   securitySchemes:
     HTTPBearer:
       type: http
+      description: Токен сессии или отдельный API-токен жюри. Введите только токен, без Bearer.
       scheme: bearer
 tags:
   - name: health
