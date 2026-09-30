@@ -67,6 +67,33 @@ def unknown_benefit(program_id: str) -> Benefit:
     )
 
 
+SUBJECT_DESCRIPTIONS = {
+    "math": "Алгебра, геометрия, комбинаторика и теория чисел. Задачи с доказательствами и "
+    "развёрнутыми решениями.",
+    "informatics": "Алгоритмические задачи: нужно разработать решение и написать программу, "
+    "которая пройдёт тесты.",
+    "physics": "Механика, электричество, оптика и термодинамика. В задачах важны физическая "
+    "модель и обоснование решения.",
+    "chemistry": "Расчёты, химические реакции и свойства веществ. Задачи объединяют несколько "
+    "разделов химии.",
+    "biology": "Ботаника, зоология, анатомия и генетика. Работа с биологическими данными, схемами "
+    "и экспериментами.",
+    "history": "Анализ исторических источников, карт и событий. Нужно сопоставлять факты и "
+    "аргументировать выводы.",
+    "social": "Право, экономика, социология и политология. Анализ текстов, общественных ситуаций "
+    "и аргументов.",
+    "russian": "Лингвистические задачи о звуках, словах и грамматике. Поиск закономерностей и "
+    "объяснение языковых явлений.",
+    "literature": "Анализ художественных текстов: композиции, образов и языка. Развёрнутые ответы "
+    "с опорой на произведение.",
+    "english": "Понимание английской речи и текстов, лексика, грамматика и письменная "
+    "аргументация.",
+    "geography": "Работа с картами и географическими данными. Природные процессы, население и "
+    "хозяйство разных территорий.",
+    "economics": "Микро- и макроэкономика, расчёты и анализ графиков. Объяснение поведения "
+    "рынков, фирм и потребителей.",
+}
+
 OLYMPIADS = [
     Olympiad(
         id="vsosh-math",
@@ -76,7 +103,8 @@ OLYMPIADS = [
         kind="vsosh",
         grades=[9, 10, 11],
         level="Школьный → заключительный этап",
-        description="Последовательный маршрут из четырёх этапов. Начните с расписания вашей школы.",
+        description="Алгебра, геометрия, комбинаторика и теория чисел. Задачи с доказательствами "
+        "и развёрнутыми решениями.",
         registration_url=VSOSH.url,
         source=VSOSH,
         benefits=[vsosh_benefit(p.id, "математика") for p in PROGRAMS],
@@ -90,7 +118,8 @@ OLYMPIADS = [
         kind="vsosh",
         grades=[9, 10, 11],
         level="Школьный → заключительный этап",
-        description="Профиль информатики для тех, кому интересны алгоритмы и программирование.",
+        description="Алгоритмические задачи: нужно разработать решение и написать программу, "
+        "которая пройдёт тесты.",
         registration_url=VSOSH.url,
         source=VSOSH,
         benefits=[vsosh_benefit(p.id, "программирование") for p in PROGRAMS],
@@ -105,7 +134,8 @@ OLYMPIADS = [
         grades=[9, 10, 11],
         level="Школьный → заключительный этап",
         description=(
-            "Профиль информатики. Условия льгот различаются даже между близкими программами."
+            "Задачи по анализу данных и машинному обучению: подготовка данных, построение и "
+            "оценка моделей."
         ),
         registration_url=VSOSH.url,
         source=VSOSH,
@@ -120,7 +150,7 @@ OLYMPIADS = [
             subject=subject,
             kind="listed",
             grades=[9, 10, 11],
-            description="Олимпиада НИУ ВШЭ. Проверьте требования к диплому для своей программы.",
+            description=SUBJECT_DESCRIPTIONS[subject],
             registration_url=HSE.url,
             source=HSE,
             benefits=[unknown_benefit(p.id) for p in PROGRAMS],
@@ -209,7 +239,7 @@ OLYMPIADS.extend(
                 grades=[9, 10, 11],
                 source=LOMONOSOV,
                 registration_url=LOMONOSOV.url,
-                description="Олимпиада МГУ: дистанционный отбор и заключительный этап по профилю.",
+                description=SUBJECT_DESCRIPTIONS[subject],
                 benefits=[unknown_benefit(p.id) for p in PROGRAMS],
                 events=[
                     Event(
@@ -231,7 +261,8 @@ OLYMPIADS.extend(
             grades=[9, 10, 11],
             source=ROSATOM,
             registration_url="https://org.mephi.ru/",
-            description="Олимпиада НИЯУ МИФИ. Можно выбрать дистанционный отборочный тур.",
+            description="Математические задачи с числовым ответом. На дистанционный тур отводится "
+            "три часа.",
             benefits=[unknown_benefit(p.id) for p in PROGRAMS],
             events=[
                 Event(
@@ -309,7 +340,7 @@ for subject in SUBJECTS[2:]:
             kind="vsosh",
             grades=[9, 10, 11],
             level="Школьный → заключительный этап",
-            description=f"ВсОШ · {subject.name}. Дату школьного этапа уточните в своей школе.",
+            description=SUBJECT_DESCRIPTIONS[subject.id],
             registration_url=VSOSH.url,
             source=VSOSH,
             benefits=[],
@@ -347,8 +378,7 @@ for subject in SUBJECTS:
                 subject=subject.id,
                 kind="listed",
                 grades=[9, 10, 11],
-                description="Профиль олимпиады МГУ. Отборочный этап сезона 2026/27 — "
-                "октябрь-декабрь.",
+                description=SUBJECT_DESCRIPTIONS[subject.id],
                 source=LOMONOSOV,
                 registration_url=LOMONOSOV.url,
                 benefits=[],
@@ -373,8 +403,8 @@ OLYMPIADS.extend(
             grades=[9, 10, 11],
             source=MIPT,
             registration_url=MIPT.url,
-            description="Онлайн-отбор МФТИ: 4 октября и 25 октября. Для участия "
-            "подтвердите профиль заранее.",
+            description="Письменные задачи по физике. Онлайн-тур длится четыре часа; в решении "
+            "нужно обосновать расчёты.",
             benefits=[],
             events=[
                 Event(
@@ -418,8 +448,8 @@ OLYMPIADS.extend(
             grades=[9, 10, 11],
             source=ROSATOM,
             registration_url="https://org.mephi.ru/",
-            description="Олимпиада НИЯУ МИФИ. Интернет-отбор: 17 ноября — 21 декабря "
-            "2026; на решение даётся 3 часа.",
+            description="Физические задачи с числовым ответом. Дистанционный тур длится три часа, "
+            "на решение даётся одна попытка.",
             benefits=[],
             events=[
                 Event(
@@ -439,8 +469,8 @@ OLYMPIADS.extend(
             grades=[9, 10, 11],
             source=REGISTRY,
             registration_url="https://olympiads.mccme.ru/mmo/",
-            description="Московская математическая олимпиада (ММО). Профиль первого "
-            "уровня в перечне РСОШ 2025/26.",
+            description="Математические задачи с развёрнутыми доказательствами. Оцениваются "
+            "решение и ход рассуждений.",
             benefits=[],
             events=[],
             aliases=["ММО", "МОШ"],
@@ -454,8 +484,8 @@ OLYMPIADS.extend(
             grades=[9, 10, 11],
             source=REGISTRY,
             registration_url="https://olympiada.spbu.ru/",
-            description="Олимпиада Санкт-Петербургского государственного университета. "
-            "Профиль первого уровня в перечне 2025/26.",
+            description="Алгоритмы и программирование. Для каждой задачи нужно написать решение с "
+            "учётом ограничений по времени и памяти.",
             benefits=[],
             events=[],
             aliases=["СПБГУ", "Санкт-Петербургский государственный университет"],
@@ -469,8 +499,8 @@ OLYMPIADS.extend(
             grades=[9, 10, 11],
             source=REGISTRY,
             registration_url="https://techno-cup.ru/",
-            description="Олимпиада по программированию. Второй уровень по информатике в "
-            "перечне РСОШ 2025/26.",
+            description="Соревнование по алгоритмическому программированию. Решения проверяются "
+            "автоматически на наборе тестов.",
             benefits=[],
             events=[],
             aliases=["Технокубок", "информатика"],
@@ -568,6 +598,63 @@ for olympiad in OLYMPIADS:
         if benefit.kind != "unknown":
             benefit.diploma_validity_years = 4
             benefit.validity_source = VALIDITY
+
+# Program pages establish entries, not BVI benefits.
+PROGRAMS.extend(
+    [
+        Program(
+            id="cu-mcs",
+            name="Математика и компьютерные науки",
+            short_name="МКН",
+            university="Центральный университет",
+            campus="Москва",
+            direction="02.03.01 Математика и компьютерные науки",
+            description="Математика, разработка программ и искусственный интеллект.",
+            url="https://cu.ru/bachelor",
+        ),
+        Program(
+            id="mephi-se",
+            name="Математическое и программное обеспечение вычислительных машин "
+            "и компьютерных сетей",
+            short_name="Программная инженерия",
+            university="НИЯУ МИФИ",
+            campus="Москва",
+            direction="09.03.04 Программная инженерия",
+            description="Разработка программных систем, алгоритмы и компьютерные сети.",
+            url="https://eis.mephi.ru/programs/Program/Details/385",
+        ),
+        Program(
+            id="mipt-physics",
+            name="Физика перспективных технологий",
+            short_name="ФПТ",
+            university="МФТИ (Физтех)",
+            campus="Долгопрудный",
+            direction="03.03.01 Прикладные математика и физика",
+            description="Теоретическая и экспериментальная физика, работа на базовых кафедрах.",
+            url="https://pkfefm.mipt.ru/",
+        ),
+        Program(
+            id="bmstu-cad",
+            name="Системы автоматизированного проектирования",
+            short_name="САПР",
+            university="МГТУ им. Н. Э. Баумана",
+            campus="Москва",
+            direction="09.03.01 Информатика и вычислительная техника",
+            description="Программирование, компьютерная графика и инженерное проектирование.",
+            url="https://rk6.bmstu.ru/enrollees/бакалавриат/",
+        ),
+        Program(
+            id="msu-pmi",
+            name="Прикладная математика и информатика",
+            short_name="ПМИ · ВМК",
+            university="МГУ им. М. В. Ломоносова",
+            campus="Москва",
+            direction="01.03.02 Прикладная математика и информатика",
+            description="Математическое моделирование, численные методы и программирование.",
+            url="https://pk.cs.msu.ru/bak_educational_programs",
+        ),
+    ]
+)
 
 BY_ID = {item.id: item for item in OLYMPIADS}
 

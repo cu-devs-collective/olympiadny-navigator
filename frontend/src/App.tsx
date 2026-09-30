@@ -105,6 +105,7 @@ function App() {
   const [editing, setEditing] = useState(false);
   const [removing, setRemoving] = useState<Olympiad | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteConfirmed, setDeleteConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -375,12 +376,14 @@ function App() {
         <div className="topbar-right">
           <span className="max-label">для MAX</span>
           {catalog?.bot_url && (
-            <button
-              className="button secondary chat-button"
-              onClick={() => openChat(catalog.bot_url!)}
+            <a
+              className="bot-link"
+              href={catalog.bot_url}
+              target="_blank"
+              rel="noopener noreferrer"
             >
-              Открыть чат <Icon name="external" size={16} />
-            </button>
+              {catalog.bot_url.replace(/^https?:\/\//, "")}
+            </a>
           )}
         </div>
       </header>
@@ -426,13 +429,6 @@ function App() {
               </small>
             )}
           </div>
-          <div className="sidebar-chat">
-            <strong>Всё срочное — в чате</strong>
-            <p>
-              Ближайшие сроки, отметки о регистрации и управление сообщениями.
-            </p>
-            <code>/track · /deadlines</code>
-          </div>
         </aside>
         <main>
           {error && (
@@ -453,8 +449,7 @@ function App() {
             <>
               {me?.is_demo && (
                 <div className="demo-strip">
-                  Браузерное демо · отдельный профиль. Для сообщений и общего
-                  маршрута открой приложение из MAX.
+                  Демо-режим. Этот профиль не связан с аккаунтом MAX.
                 </div>
               )}
               {tab === "discover" && (
@@ -463,10 +458,6 @@ function App() {
                     <div>
                       <span className="label">СЕЗОН 2026/27</span>
                       <h1>Олимпиады</h1>
-                      <p>
-                        Выбери предмет, проверь условия и добавь олимпиаду в
-                        свой маршрут.
-                      </p>
                     </div>
                     {!me ? (
                       <button
@@ -494,7 +485,7 @@ function App() {
                       олимпиад
                     </span>
                     <span>
-                      <strong>{catalog.programs.length}</strong> программы вузов
+                      Программ вузов: <strong>{catalog.programs.length}</strong>
                     </span>
                     <span>
                       Данные актуальны на{" "}
@@ -573,11 +564,7 @@ function App() {
                       Добавить олимпиаду <Icon name="plus" size={18} />
                     </button>
                   </div>
-                  <p className="inline-note">
-                    Отметки синхронизируются с ботом. Команда /track открывает
-                    этот же список в чате; /settings включает сообщения о
-                    сроках.
-                  </p>
+
                   {entries.length ? (
                     <div className="catalog-grid">
                       {entries.map((o) => card(o, true))}
@@ -605,10 +592,7 @@ function App() {
                     <div>
                       <span className="label">СРОКИ ТВОЕГО МАРШРУТА</span>
                       <h1>Календарь</h1>
-                      <p>
-                        Время: {tz}. События без точного срока показаны
-                        отдельно.
-                      </p>
+                      <p>Даты и время указаны в твоём часовом поясе.</p>
                     </div>
                   </div>
                   {!events.length && !undated.length ? (
@@ -695,9 +679,6 @@ function App() {
                     <div>
                       <span className="label">НАСТРОЙКИ МАРШРУТА</span>
                       <h1>Мой профиль</h1>
-                      <p>
-                        Класс и программы помогают выбрать подходящие олимпиады.
-                      </p>
                     </div>
                   </div>
                   {me?.profile.consent ? (
@@ -711,12 +692,27 @@ function App() {
                           busy={busy}
                         />
                       </div>
-                      <button
-                        className="text-button destructive"
-                        onClick={() => setDeleting(true)}
+                      <section
+                        className="delete-profile-panel"
+                        aria-label="Удаление профиля"
                       >
-                        Удалить профиль
-                      </button>
+                        <div>
+                          <h2>Удаление профиля</h2>
+                          <p>
+                            Цели, олимпиады и история участия будут удалены без
+                            возможности восстановления.
+                          </p>
+                        </div>
+                        <button
+                          className="button destructive"
+                          onClick={() => {
+                            setDeleteConfirmed(false);
+                            setDeleting(true);
+                          }}
+                        >
+                          Удалить профиль
+                        </button>
+                      </section>
                     </>
                   ) : (
                     <div className="empty">
@@ -792,6 +788,14 @@ function App() {
             Маршрут, отметки и история будут удалены. Напоминания в чате
             остановятся.
           </p>
+          <label className="delete-confirmation">
+            <input
+              type="checkbox"
+              checked={deleteConfirmed}
+              onChange={(e) => setDeleteConfirmed(e.target.checked)}
+            />
+            Я понимаю, что восстановить данные не получится
+          </label>
           <div className="dialog-actions">
             <button
               className="button secondary"
@@ -801,9 +805,10 @@ function App() {
             </button>
             <button
               className="button destructive"
-              disabled={busy}
+              disabled={busy || !deleteConfirmed}
               onClick={() =>
                 void run(async () => {
+                  if (!deleteConfirmed) return;
                   await api.delete();
                   session.clear();
                   setMe(null);
@@ -948,9 +953,6 @@ function App() {
               >
                 Источник <Icon name="external" size={15} />
               </button>
-              <small>
-                {b.source.note} Проверено: {b.source.checked_at}
-              </small>
             </section>
           ))}
           <h3>Сроки и этапы</h3>

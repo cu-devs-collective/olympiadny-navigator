@@ -672,7 +672,7 @@ def test_many_programs_and_catalog_provenance(client):
     profile["program_ids"] = [p["id"] for p in catalog["programs"]]
     saved = client.put("/api/v1/me", headers=headers, json=profile)
     assert saved.status_code == 200
-    assert len(saved.json()["profile"]["program_ids"]) == 4
+    assert len(saved.json()["profile"]["program_ids"]) == len(catalog["programs"]) == 9
     olympiads = {o["id"]: o for o in catalog["olympiads"]}
     assert len(olympiads) == 32
     assert olympiads["fiztech-math"]["registry_level"] == 2

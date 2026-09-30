@@ -125,10 +125,31 @@ test("personal route: derived year, status, persistence and deletion", async ({
     .getByRole("button", { name: "Мой профиль" })
     .click();
   await page
+    .getByRole("region", { name: "Удаление профиля" })
+    .scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath("profile-delete.png") });
+  await page
     .getByRole("button", { name: "Удалить профиль", exact: true })
     .click();
+  const deleteDialog = page.getByRole("dialog");
+  await expect(
+    deleteDialog.getByRole("button", { name: "Удалить", exact: true }),
+  ).toBeDisabled();
+  await deleteDialog
+    .getByRole("button", { name: "Отмена", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Мой профиль", exact: true }),
+  ).toBeVisible();
   await page
-    .getByRole("dialog")
+    .getByRole("button", { name: "Удалить профиль", exact: true })
+    .click();
+  await deleteDialog
+    .getByRole("checkbox", {
+      name: "Я понимаю, что восстановить данные не получится",
+    })
+    .check();
+  await deleteDialog
     .getByRole("button", { name: "Удалить", exact: true })
     .click();
   await expect(
@@ -223,7 +244,7 @@ test("program picker scales to 100 programs and preserves selection across filte
   );
 });
 
-test("chat button returns to MAX using the bridge", async ({
+test("MAX also shows a plain bot link and preserves consent", async ({
   page,
   request,
 }) => {
@@ -253,12 +274,18 @@ test("chat button returns to MAX using the bridge", async ({
   });
   await page.goto("/");
   await page.getByRole("button", { name: "Принимаю", exact: true }).click();
-  await page.getByRole("button", { name: "Открыть чат" }).click();
-  expect(
-    await page.evaluate(
-      () => (window as unknown as { openedChat: string }).openedChat,
-    ),
-  ).toBe("https://web.max.ru/t529_hakaton_max_bot?start=navigator");
+  const botLink = page.getByRole("link", {
+    name: "max.ru/t529_hakaton_max_bot",
+    exact: true,
+  });
+  await expect(botLink).toHaveAttribute(
+    "href",
+    "https://max.ru/t529_hakaton_max_bot",
+  );
+  await expect(botLink).toHaveAttribute("target", "_blank");
+  await expect(page.getByRole("button", { name: "Открыть чат" })).toHaveCount(
+    0,
+  );
   await page
     .getByRole("navigation")
     .getByRole("button", { name: "Мой профиль" })
@@ -274,19 +301,82 @@ test("chat button returns to MAX using the bridge", async ({
   });
 });
 
-test("chat button navigates directly in a browser", async ({ page }) => {
+test("bot link is a plain URL in the browser", async ({ page }) => {
   await page.route("**/api/v1/catalog", async (r) => {
     const data = await (await r.fetch()).json();
     await r.fulfill({
       json: { ...data, bot_url: "https://max.ru/t529_hakaton_max_bot" },
     });
   });
-  await page.route("https://max.ru/t529_hakaton_max_bot?start=navigator", (r) =>
-    r.fulfill({ contentType: "text/html", body: "Bot page" }),
-  );
+  await page
+    .context()
+    .route("https://max.ru/t529_hakaton_max_bot", (r) =>
+      r.fulfill({ contentType: "text/html", body: "Bot page" }),
+    );
   await page.goto("/");
-  await page.getByRole("button", { name: "Открыть чат" }).click();
-  await expect(page).toHaveURL(
-    "https://max.ru/t529_hakaton_max_bot?start=navigator",
-  );
+  const popupPromise = page.waitForEvent("popup");
+  await page
+    .getByRole("link", { name: "max.ru/t529_hakaton_max_bot", exact: true })
+    .click();
+  const popup = await popupPromise;
+  await expect(popup).toHaveURL("https://max.ru/t529_hakaton_max_bot");
+});
+
+test("university filter includes every university in the catalog", async ({
+  page,
+  request,
+}) => {
+  const catalog = await (await request.get("/api/v1/catalog")).json();
+  const universities = [
+    ...new Set<string>(
+      catalog.programs.map((p: { university: string }) => p.university),
+    ),
+  ].sort();
+  expect(universities).toHaveLength(7);
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "Настроить навигатор", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Принимаю", exact: true }).click();
+  const modal = page.getByRole("dialog");
+  const selector = modal.getByLabel("Вуз", { exact: true });
+  await expect(selector.locator("option")).toHaveText([
+    "Все вузы",
+    ...universities,
+  ]);
+  for (const university of universities) {
+    await selector.selectOption(university);
+    const count = catalog.programs.filter(
+      (p: { university: string }) => p.university === university,
+    ).length;
+    await expect(modal.locator(".program-option")).toHaveCount(count);
+    await expect(modal.locator(".program-option").first()).toContainText(
+      university,
+    );
+  }
+  await modal
+    .getByLabel("Вуз", { exact: true })
+    .selectOption("Центральный университет");
+  await modal
+    .getByRole("checkbox", {
+      name: "Центральный университет, Математика и компьютерные науки",
+      exact: true,
+    })
+    .check();
+  await modal.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await expect(modal).not.toBeVisible();
+  await page
+    .getByRole("navigation")
+    .getByRole("button", { name: "Календарь", exact: true })
+    .click();
+  await expect(
+    page.getByText("Время: Europe/Moscow", { exact: false }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("navigation")
+    .getByRole("button", { name: "Мой навигатор" })
+    .click();
+  await expect(
+    page.getByText("Отметки синхронизируются", { exact: false }),
+  ).toHaveCount(0);
 });
