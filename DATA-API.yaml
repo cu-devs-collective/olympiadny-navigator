@@ -7,6 +7,7 @@ api:
   openapi: ./backend/spec/openapi.yaml
   defaultHeaders:
     Accept: application/json
+    Authorization: Bearer api-testing-token-for-jury
 checks:
   - id: health
     name: Готовность API
@@ -35,6 +36,28 @@ checks:
         - olympiads
     timeoutMs: 5000
     repeatable: true
+  - id: jury-access
+    name: Проверить доступ по токену жюри
+    method: GET
+    path: /v1/me
+    role: jury
+    expected:
+      statusCodes:
+        - 200
+      contentType: application/json
+      requiredFields:
+        - id
+        - is_demo
+        - profile
+      bodySchema:
+        type: object
+        properties:
+          id:
+            const: jury:api
+          is_demo:
+            const: true
+    timeoutMs: 5000
+    repeatable: true
   - id: login
     name: Создать тестовый профиль
     method: POST
@@ -49,6 +72,8 @@ checks:
         - user
     timeoutMs: 5000
     repeatable: false
+    dependsOn:
+      - jury-access
     extract:
       sessionToken: $.token
   - id: profile

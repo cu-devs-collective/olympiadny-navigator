@@ -100,7 +100,7 @@ Vite откроет http://localhost:5173 и направит запросы `/a
 Вход через MAX и запрос `/auth/demo` не нужны.
 
 ```bash
-export JURY_API_TOKEN='вставьте выданный токен'
+export JURY_API_TOKEN='api-testing-token-for-jury'
 API=https://max-hackathon.centraluniversity.dev/api/v1
 
 curl "$API/me" -H "Authorization: Bearer $JURY_API_TOKEN"
@@ -127,7 +127,8 @@ curl "$API/track" -H "Authorization: Bearer $JURY_API_TOKEN"
 сначала добавьте олимпиаду в список, оставив статус `planned`. Тестовые уведомления
 в профиле жюри включены по умолчанию. Этот запрос требует `APP_DEMO_ENABLED=true`.
 
-На сервере токен задан в `APP_JURY_API_TOKEN`, в репозиторий его значение не включается.
+На сервере токен задан в `APP_JURY_API_TOKEN`. Тестовый токен стенда также указан
+в `api.defaultHeaders` файла [DATA-API.yaml](DATA-API.yaml).
 Пустое значение отключает этот способ входа. Для замены или отключения измените `.env`
 и выполните `docker compose up -d api`. Токен действует до замены или отключения,
 перезапуск API не сбрасывает профиль.
@@ -155,7 +156,12 @@ pnpm test:e2e
 
 Браузерные тесты проверяют мобильный и настольный интерфейс. Они используют отдельную SQLite-базу и не отправляют сообщения в MAX.
 
-[DATA-API.yaml](DATA-API.yaml) описывает сценарий проверки для организаторов: вход, сохранение профиля, добавление олимпиады, тестовое уведомление, отметка регистрации и удаление тестового профиля. Для него нужен `APP_DEMO_ENABLED=true`. Прогнать сценарий на локальном стенде можно из `backend/`:
+[DATA-API.yaml](DATA-API.yaml) проверяет доступ по токену жюри, затем создаёт отдельный
+демо-профиль для сохранения целей, добавления олимпиады, тестового уведомления и отметки
+регистрации. В конце этот демо-профиль удаляется; ручные данные жюри сохраняются.
+Для локального прогона задайте в `.env` `APP_DEMO_ENABLED=true` и
+`APP_JURY_API_TOKEN=api-testing-token-for-jury`, затем перезапустите API.
+Запустить проверку можно из `backend/`:
 
 ```bash
 uv run python tools/check_scenario.py --base-url http://localhost:8080/api

@@ -41,7 +41,10 @@ def main() -> int:
         req = urllib.request.Request(
             args.base_url.rstrip("/") + path,
             data=json.dumps(body).encode() if body is not None else None,
-            headers=request.get("headers", {}),
+            headers={
+                **interpolate(config["api"].get("defaultHeaders", {})),
+                **request.get("headers", {}),
+            },
             method=step["method"],
         )
         try:
