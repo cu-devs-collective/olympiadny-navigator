@@ -1,5 +1,3 @@
-"""Chat workflows share the same profile, track and outbox as the mini-app."""
-
 from dataclasses import dataclass, field
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -37,12 +35,12 @@ STATES = {"planned": "В плане", "registered": "Регистрация от
 HELP = (
     "Олимпиадный навигатор\n\n"
     "Здесь можно собрать маршрут целиком, проверить сроки и отметить регистрацию.\n\n"
-    "/profile — класс и цели\n"
-    "/catalog — олимпиады; можно написать «Физтех» или «математика»\n"
-    "/track — мой маршрут и действия\n"
-    "/deadlines — ближайшие сроки\n"
-    "/settings — сообщения и тихие часы\n"
-    "/stop — отключить напоминания\n\n"
+    "/profile: класс и цели\n"
+    "/catalog: олимпиады; можно написать «Физтех» или «математика»\n"
+    "/track: мой маршрут и действия\n"
+    "/deadlines: ближайшие сроки\n"
+    "/settings: сообщения и тихие часы\n"
+    "/stop: отключить напоминания\n\n"
     "Напоминания приходят сюда. Мини-приложение удобно для сравнения условий и календаря."
 )
 
@@ -194,7 +192,7 @@ async def respond(db: AsyncSession, user: Student, raw: str, demo_enabled: bool)
             "Изменить часы: /quiet 22 8. Без тихих часов: /quiet 0 0.\n"
             "Часовой пояс: /timezone Asia/Yekaterinburg.\n"
             "Напоминаем за 7 дней и за сутки до проверенного срока. "
-            "Нет точной даты — нет рассылки.",
+            "Для событий без точной даты напоминания пока недоступны.",
             [
                 [
                     button(
@@ -207,7 +205,7 @@ async def respond(db: AsyncSession, user: Student, raw: str, demo_enabled: bool)
         )
     if command == "stop":
         await stop_notifications(db, user.id)
-        return Reply("Напоминания отключены. /resume — снова включить.", menu())
+        return Reply("Напоминания отключены. /resume: снова включить.", menu())
     if command in {"resume", "quiet", "timezone"}:
         user = await lock_student(db, user.id)
         values = Profile(**user.profile).model_dump()
@@ -283,7 +281,7 @@ async def respond(db: AsyncSession, user: Student, raw: str, demo_enabled: bool)
         page = min(page, (len(route.items) - 1) // 12)
         for entry in route.items[page * 12 : (page + 1) * 12]:
             o = get_olympiad(entry.olympiad_id)
-            lines.append(f"• {o.name} · {o.profile} — {STATES[entry.status]}")
+            lines.append(f"• {o.name} · {o.profile}: {STATES[entry.status]}")
             rows.append([button(title(o), f"show {o.id}")])
         navigation = []
         if page:
@@ -374,8 +372,8 @@ async def respond(db: AsyncSession, user: Student, raw: str, demo_enabled: bool)
             )
             lines.append(f"• {e.title}: {day}" if stamp else f"• {e.title}. {e.source.note}")
         lines.append(
-            "\nПриём 2026 — ориентир. "
-            f"Для поступления в {profile.admission_year} нужна новая проверка."
+            "\nПравила приёма указаны за 2026 год. "
+            f"Для поступления в {profile.admission_year} проверь правила выбранного вуза."
         )
         for b in o.benefits:
             if profile.program_ids and b.program_id not in profile.program_ids:
@@ -408,4 +406,4 @@ async def respond(db: AsyncSession, user: Student, raw: str, demo_enabled: bool)
         else:
             rows.append([button("Добавить в маршрут", f"add {o.id}")])
         return Reply("\n".join(lines), rows)
-    return Reply("Не знаю эту команду. /help — что умеет бот.", menu())
+    return Reply("Не знаю эту команду. /help: что умеет бот.", menu())

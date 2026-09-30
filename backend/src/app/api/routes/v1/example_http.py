@@ -1,5 +1,3 @@
-# TODO: remove this example http route file.
-
 import fastapi
 import httpx2
 

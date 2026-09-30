@@ -1,7 +1,6 @@
 import { test, expect } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
-  // Browser tests exercise our local API, not external CDN availability.
   await page.route("https://st.max.ru/**", (route) => route.abort());
   await page.route("https://fonts.googleapis.com/**", (route) => route.abort());
 });

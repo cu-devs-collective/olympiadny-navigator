@@ -1,5 +1,3 @@
-# TODO: remove this example model file.
-
 import datetime
 
 import sqlalchemy
@@ -9,8 +7,6 @@ from app.db.base import Base
 
 
 class ExampleModel(Base):
-    """Example ORM model."""
-
     __tablename__ = "_examples"
 
     id: sqlalchemy.orm.Mapped[int] = sqlalchemy.orm.mapped_column(primary_key=True)

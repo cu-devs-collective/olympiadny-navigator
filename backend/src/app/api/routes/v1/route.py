@@ -125,7 +125,6 @@ async def accept_consent(body: ConsentRequest, user: UserDep, db: DbSessionDep) 
 
 @router.put("/me", response_model=Me, operation_id="saveProfile")
 async def profile(body: Profile, user: UserDep, db: DbSessionDep) -> Me:
-    # A mini-app edit must not overwrite settings changed in the chat meanwhile.
     stored = Profile(**(await lock_student(db, user.id)).profile)
     preserved = {
         key: getattr(stored, key)

@@ -60,16 +60,15 @@ line-length = 100
 target-version = "py313"
 
 [tool.ruff.lint]
-# Product copy is written in Russian.
 allowed-confusables = ["А", "В", "Е", "К", "М", "Н", "О", "Р", "С", "Т", "Х", "а", "е", "о", "р", "с", "у", "х"]
 select = [
-    "E",   # style errors
-    "F",   # invalid or unused Python constructs
-    "I",   # import ordering
-    "UP",  # modernization for supported Python versions
-    "B",   # likely bugs
-    "SIM", # unnecessary complexity
-    "RUF", # Ruff-specific correctness rules
+    "E",
+    "F",
+    "I",
+    "UP",
+    "B",
+    "SIM",
+    "RUF",
 ]
 
 [tool.ruff.lint.isort]

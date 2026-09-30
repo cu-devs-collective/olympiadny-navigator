@@ -5,7 +5,7 @@ import sqlalchemy.engine
 import sqlalchemy.ext.asyncio
 import sqlalchemy.pool
 
-import app.db.models  # noqa: F401 -- importing models registers their tables
+import app.db.models  # noqa: F401
 from app.core.config import get_settings
 from app.core.logging import configure_logging, shutdown_logging
 from app.db.base import Base

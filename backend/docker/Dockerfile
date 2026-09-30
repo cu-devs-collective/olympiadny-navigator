@@ -1,8 +1,6 @@
-##### image tags #####
 ARG PYTHON_TAG=3.13.8-alpine3.22@sha256:3a77fbbb5bc88c0f63cc2692a13b011547f25ee93536e991544c452801856226
 ARG UV_VERSION=0.12.7
 
-##### build #####
 FROM python:${PYTHON_TAG} AS builder
 
 ARG UV_VERSION
@@ -24,7 +22,6 @@ COPY migrations ./migrations
 
 RUN uv sync --locked --no-dev --no-editable
 
-##### runtime #####
 FROM python:${PYTHON_TAG}
 
 ENV PATH="/opt/app/.venv/bin:${PATH}" \

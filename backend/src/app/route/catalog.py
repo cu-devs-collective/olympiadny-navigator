@@ -1,5 +1,3 @@
-"""Editorial snapshot of real olympiads. Unknown rules and dates are not inferred."""
-
 from typing import Literal
 
 from app.api.errors import ApiError
@@ -14,7 +12,7 @@ RULES = Source(
 HSE = Source(
     url="https://talent.hse.ru/olimp/mmo/",
     title="Высшая проба · сайт организатора",
-    note="Общая регистрация 20 августа — 22 сентября 2026, 14:00 мск. Есть исключения по профилям.",
+    note="Регистрация с 20 августа до 22 сентября 2026, 14:00 мск. Есть исключения по профилям.",
 )
 VSOSH = Source(
     url="https://vserosolimp.edsoo.ru/",
@@ -174,11 +172,10 @@ OLYMPIADS = [
         for subject, profile in VP_PROFILES
     ],
 ]
-# Dates below are a manually checked snapshot, not a live organizer feed.
 MIPT = Source(
     url="https://olymp-online.mipt.ru/",
     title="Физтех · расписание 2026/27",
-    note="Регистрация и подтверждение данных — не позднее 24 часов до тура. Время московское.",
+    note="Регистрация и подтверждение данных не позднее 24 часов до тура. Время московское.",
 )
 LOMONOSOV = Source(
     url="https://olymp.msu.ru/",
@@ -188,7 +185,7 @@ LOMONOSOV = Source(
 ROSATOM = Source(
     url="https://olymp.mephi.ru/rosatom/stages/qualification",
     title="Росатом · отборочный этап",
-    note="Интернет-тур 17 ноября — 21 декабря 2026. Точное время окончания не опубликовано.",
+    note="Интернет-тур с 17 ноября по 21 декабря 2026. Точное время окончания не опубликовано.",
 )
 OLYMPIADS.extend(
     [
@@ -267,7 +264,7 @@ OLYMPIADS.extend(
             events=[
                 Event(
                     id="online",
-                    title="Интернет-тур · 17 ноября — 21 декабря",
+                    title="Интернет-тур с 17 ноября по 21 декабря",
                     kind="stage",
                     source=ROSATOM,
                 )
@@ -298,7 +295,6 @@ PROGRAMS.extend(
         ),
     ]
 )
-# A real program is not evidence of any particular olympiad admission benefit.
 for olympiad in OLYMPIADS:
     for program in PROGRAMS[2:]:
         olympiad.benefits.append(
@@ -348,7 +344,6 @@ for subject in SUBJECTS[2:]:
         )
     )
 
-# Levels are tied to a published registry edition, not inferred for a future season.
 REGISTRY = Source(
     url="https://rsr-olymp.ru/archive/2025",
     title="РСОШ · перечень 2025/26 · приказ № 669 от 30.08.2025",
@@ -454,7 +449,7 @@ OLYMPIADS.extend(
             events=[
                 Event(
                     id="online",
-                    title="Интернет-тур · 17 ноября — 21 декабря",
+                    title="Интернет-тур с 17 ноября по 21 декабря",
                     kind="stage",
                     source=ROSATOM,
                 )
@@ -520,7 +515,6 @@ LEVELS: dict[str, Literal[1, 2, 3]] = {
     "spbu-informatics": 1,
     "technocup-informatics": 2,
 }
-# Read from the two program-specific 2026 admission tables, including merged PDF cells.
 PROGRAM_RULES = {
     "hse-pmi": Source(
         url="https://ba.hse.ru/mirror/pubs/share/1120646366",
@@ -571,7 +565,7 @@ for olympiad in OLYMPIADS:
             result="Победитель заключительного этапа"
             if winner_only
             else "Победитель или призёр заключительного этапа",
-            confirmation=f"ЕГЭ: {subject_name.lower()} — от {threshold} баллов. "
+            confirmation=f"ЕГЭ по предмету «{subject_name.lower()}»: от {threshold} баллов. "
             "Для отдельных категорий поступающих действует порог 65 (см. источник).",
             explanation=(
                 "Призёрам доступно 100 баллов по предмету вместо БВИ. " if winner_only else ""
@@ -599,7 +593,6 @@ for olympiad in OLYMPIADS:
             benefit.diploma_validity_years = 4
             benefit.validity_source = VALIDITY
 
-# Program pages establish entries, not BVI benefits.
 PROGRAMS.extend(
     [
         Program(

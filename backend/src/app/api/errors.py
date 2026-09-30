@@ -55,7 +55,6 @@ def install_error_handlers(app: fastapi.FastAPI) -> None:
         _request: fastapi.Request,
         exc: fastapi.exceptions.RequestValidationError,
     ) -> fastapi.responses.JSONResponse:
-        # Do not reflect submitted initData or non-serializable validator exceptions.
         details = [{"loc": e["loc"], "msg": e["msg"], "type": e["type"]} for e in exc.errors()]
         return _error_response(422, "validation_error", "Проверьте заполненные поля", details)
 

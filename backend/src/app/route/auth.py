@@ -1,8 +1,3 @@
-"""MAX initData validation and revocable opaque sessions.
-
-Protocol: https://dev.max.ru/docs/webapps/validation
-"""
-
 import hashlib
 import hmac
 import json

@@ -28,7 +28,6 @@ class Subject(BaseModel):
 
 def admission_year_for_grade(grade: int, today: datetime | None = None) -> int:
     today = today or datetime.now(ZoneInfo("Europe/Moscow"))
-    # The school year begins in September. During summer use the completed grade.
     graduation_year = today.year + (1 if today.month >= 9 else 0)
     return graduation_year + 11 - grade
 

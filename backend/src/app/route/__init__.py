@@ -1,1 +1,0 @@
-"""Olympiad route domain."""

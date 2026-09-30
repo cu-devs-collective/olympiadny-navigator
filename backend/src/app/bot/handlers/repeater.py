@@ -11,7 +11,6 @@ from maxapi.types import (
 
 
 async def repeat_message(event: MessageCreated) -> None:
-    """Send an incoming message's text and attachments back to its chat."""
 
     body = event.message.body
     if body is None or (not body.text and not body.attachments):

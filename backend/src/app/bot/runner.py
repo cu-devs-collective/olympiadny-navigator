@@ -14,7 +14,6 @@ from app.db.connector import Database
 
 
 def create_bot(settings: BotSettings) -> maxapi.Bot:
-    # Retrying a POST after an ambiguous transport failure can duplicate a reminder.
     return maxapi.Bot(
         token=settings.token.get_secret_value(),
         default_connection=DefaultConnectionProperties(max_retries=0),
@@ -117,7 +116,6 @@ async def run_bot(settings: Settings | None = None) -> None:
             )
             loguru.logger.info("Chat command menu registered")
         except Exception:
-            # Commands still work as text if MAX cannot update its menu right now.
             loguru.logger.warning("Could not register chat command menu")
         dispatcher = create_dispatcher(database, settings)
         worker = asyncio.create_task(notification_loop(database, bot, settings))

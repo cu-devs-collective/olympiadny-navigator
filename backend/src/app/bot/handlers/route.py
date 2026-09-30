@@ -59,7 +59,6 @@ def create_route_router(database: Database | None, settings: Settings) -> maxapi
     async def callback(event: MessageCallback) -> None:
         raw = event.callback.payload or ""
         if raw.startswith("chat:"):
-            # Never expose a personal route in a group or forwarded conversation.
             if event.message is None or event.message.recipient.chat_type != "dialog":
                 await event.answer(notification="Откройте личный чат с ботом")
                 return

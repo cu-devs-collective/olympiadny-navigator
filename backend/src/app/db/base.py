@@ -12,6 +12,4 @@ NAMING_CONVENTION = {
 
 
 class Base(sqlalchemy.orm.DeclarativeBase):
-    """Base for application ORM models and shared table metadata."""
-
     metadata = sqlalchemy.MetaData(naming_convention=NAMING_CONVENTION)

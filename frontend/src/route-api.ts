@@ -14,7 +14,6 @@ export type {
   Olympiad,
   TrackEntry,
 } from "./api/types.gen";
-// The API serializes Pydantic defaults on every profile response.
 export type Profile = Required<GeneratedProfile>;
 export type Me = Omit<GeneratedMe, "profile"> & { profile: Profile };
 type SessionResponse = Omit<GeneratedSession, "user"> & { user: Me };
@@ -118,22 +117,23 @@ export function openSource(url: string) {
   else window.open(url, "_blank", "noopener,noreferrer");
 }
 
-// Chat deep links use start; openMaxLink is documented only for mini-apps.
 export function openChat(url: string) {
   const link = new URL(url);
   link.searchParams.set("start", "navigator");
-  // This is the web-chat URL exposed by MAX's own public bot landing page.
-  // Skip that landing page in the web client, where its native-app redirect is unhelpful.
+  const openInBrowser = () => {
+    if (window.self !== window.top)
+      window.open(link.href, "_blank", "noopener,noreferrer");
+    else window.location.assign(link.href);
+  };
   if (window.WebApp?.platform === "web") link.hostname = "web.max.ru";
   if (window.WebApp?.initData && window.WebApp.openLink) {
     try {
       window.WebApp.openLink(link.href);
       return;
     } catch {
-      // Older clients can still follow the public bot link.
+      openInBrowser();
+      return;
     }
   }
-  if (window.self !== window.top)
-    window.open(link.href, "_blank", "noopener,noreferrer");
-  else window.location.assign(link.href);
+  openInBrowser();
 }

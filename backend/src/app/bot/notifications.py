@@ -1,5 +1,3 @@
-"""Durable outbox worker. Only the bot process dispatches MAX messages."""
-
 import asyncio
 import time
 
@@ -82,7 +80,6 @@ async def dispatch_due(
     now = time.time() if now is None else now
     sent = 0
     async with database.session_factory() as db:
-        # A crashed sender may have already delivered. Do not blindly resend these jobs.
         await db.execute(
             update(Reminder)
             .where(Reminder.state == "sending", Reminder.claimed_at < now - 300)
@@ -114,8 +111,6 @@ async def dispatch_due(
             job = await db.get(Reminder, job_id)
             if job is None:
                 continue
-            # Same per-user lock as profile/track changes. Opt-outs cannot be lost
-            # between reading preferences and sending a notification.
             user = await db.scalar(
                 select(Student).where(Student.id == job.user_id).with_for_update()
             )
@@ -160,12 +155,10 @@ async def dispatch_due(
                 job.sent_at = now
                 sent += 1
             except Exception:
-                # Do not log payloads, user data or token-bearing SDK exceptions.
                 job.state = "failed"
                 job.error = "MAX не подтвердил отправку. Проверьте запуск бота и подключение."
                 loguru.logger.warning("Notification delivery was not confirmed: {}", job.id)
             await db.commit()
-        # Enforce a conservative per-dialog rate even if all jobs target one student.
         await asyncio.sleep(0.6)
     return sent
 

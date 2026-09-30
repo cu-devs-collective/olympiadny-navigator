@@ -965,7 +965,6 @@ footer {
     scroll-behavior: auto !important;
   }
 }
-/* Profile controls remain bounded as programs and subjects grow. */
 .form-grid {
   align-items: start;
 }

@@ -1,5 +1,3 @@
-"""Persistent profiles, personal tracks and notification outbox."""
-
 import time
 import uuid
 

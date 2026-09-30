@@ -1,5 +1,3 @@
-# TODO: remove this example schemas file.
-
 import datetime
 
 import pydantic

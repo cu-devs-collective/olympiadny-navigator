@@ -40,7 +40,6 @@ def _is_verbose_http_record(record: logging.LogRecord) -> bool:
 
 
 def _text_log_format(record: "Record") -> str:
-    """Render bound context as stable key-value fields in text logs."""
 
     context = " ".join(
         f"{key}={json.dumps(value, default=str, ensure_ascii=False, separators=(',', ':'))}"
@@ -53,7 +52,6 @@ def _text_log_format(record: "Record") -> str:
 
 
 def _json_log_record(record: "Record") -> str:
-    """Serialize a compact, stable JSON schema instead of Loguru internals."""
 
     timestamp = record["time"].astimezone(datetime.UTC).isoformat(timespec="milliseconds")
     payload: dict[str, typing.Any] = {
@@ -89,8 +87,6 @@ def _json_log_sink(message: "Message") -> None:
 
 
 class InterceptHandler(logging.Handler):
-    """Forward standard-library records through the Loguru sink."""
-
     def emit(self, record: logging.LogRecord) -> None:
         if _is_verbose_http_record(record):
             return
@@ -109,7 +105,6 @@ class InterceptHandler(logging.Handler):
 
 
 def configure_logging(settings: LoggingSettings) -> None:
-    """Configure one output pipeline for application and dependency logs."""
 
     loguru.logger.remove()
     if settings.format is LogFormat.JSON:
@@ -148,16 +143,12 @@ def configure_logging(settings: LoggingSettings) -> None:
         dependency_logger.handlers.clear()
         dependency_logger.propagate = True
 
-    # HTTP clients can dump Cookie, Authorization, Set-Cookie, and signed URLs
-    # in DEBUG/TRACE protocol events. Never inherit the application's DEBUG level.
     for logger_name in _SENSITIVE_HTTP_LOGGER_PREFIXES:
         http_logger = logging.getLogger(logger_name)
         http_logger.setLevel(logging.WARNING)
         http_logger.handlers.clear()
         http_logger.propagate = True
 
-    # RequestLoggingMiddleware provides structured access logs and suppresses
-    # successful health checks, so Uvicorn's duplicate access stream stays off.
     uvicorn_access_logger = logging.getLogger("uvicorn.access")
     uvicorn_access_logger.handlers.clear()
     uvicorn_access_logger.propagate = False
@@ -167,6 +158,5 @@ def configure_logging(settings: LoggingSettings) -> None:
 
 
 def shutdown_logging() -> None:
-    """Flush queued log records before the process exits."""
 
     loguru.logger.complete()

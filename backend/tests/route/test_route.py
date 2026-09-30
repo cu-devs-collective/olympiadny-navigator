@@ -521,7 +521,7 @@ def test_chat_onboarding_and_actions_without_miniapp(client, settings):
         await send("/accept", user_id=778)
         assert "пуст" in await send("/track", user_id=778)
         assert "Удалить" in await send("/remove fiztech-math")
-        assert "Физтех" in await send("/track")  # confirmation required
+        assert "Физтех" in await send("/track")
         assert "Удалено" in await send("/confirm-remove fiztech-math")
         assert "пуст" in await send("/track")
         assert "отключены" in await send("/stop")
@@ -726,7 +726,7 @@ def test_chat_deeplink_keeps_consent_and_catalog_paginates(client, settings):
             assert len(user.profile["program_ids"]) == 4
             result = await respond(db, user, "всош", True)
             assert "13" in result.text
-            assert len(result.rows) == 13  # 12 results plus navigation
+            assert len(result.rows) == 13
             assert "ВсОШ" in result.rows[0][0].text
             result = await respond(db, user, "/catalog-page 1 всош", True)
             assert len(result.rows) == 2

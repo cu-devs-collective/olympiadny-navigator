@@ -364,7 +364,7 @@ function App() {
         <a
           className="brand"
           href="/"
-          aria-label="Олимпиадный навигатор — главная"
+          aria-label="Олимпиадный навигатор: главная"
         >
           <span className="brand-mark">
             <Icon name="route" size={23} />
@@ -598,10 +598,7 @@ function App() {
                   {!events.length && !undated.length ? (
                     <div className="empty">
                       <h2>Пока нет событий</h2>
-                      <p>
-                        Добавь олимпиаду в маршрут — здесь появится её
-                        расписание.
-                      </p>
+                      <p>Здесь появится расписание выбранных олимпиад.</p>
                       <button
                         className="button primary"
                         onClick={() => setTab("discover")}
@@ -746,8 +743,8 @@ function App() {
         >
           <p>
             Для работы навигатора сохраняем класс, цели, настройки и отметки. В
-            MAX — также идентификатор аккаунта. Удалить профиль и данные можно в
-            приложении.
+            MAX также сохраняется идентификатор аккаунта. Удалить профиль и
+            данные можно в приложении.
           </p>
           <div className="dialog-actions">
             <button

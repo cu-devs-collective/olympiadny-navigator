@@ -1,5 +1,3 @@
-# TODO: remove this example migration file.
-
 """Create examples table.
 
 Revision ID: 20260922_0001

@@ -45,8 +45,6 @@ def _get_route_path(scope: Scope) -> str | None:
 
 
 class RequestLoggingMiddleware:
-    """Attach a request ID and log the completion or failure of each HTTP request."""
-
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
 
